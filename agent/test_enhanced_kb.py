@@ -5,10 +5,10 @@ Test script for enhanced KB matching and formatted response generation
 
 import sys
 import os
-sys.path.append(os.path.join(os.path.dirname(__file__), 'app'))
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))  # agent/ root, so `app` is importable as a package
 
-from pipeline import run_pipeline
-from search import top_k, get_best_kb_match, calculate_relevance_score
+from app.pipeline import run_pipeline
+from app.search import top_k, get_best_kb_match, calculate_relevance_score
 import json
 
 # Sample KB articles for testing

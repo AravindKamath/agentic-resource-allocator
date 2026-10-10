@@ -1,6 +1,6 @@
 from typing import List, Dict
 import google.generativeai as genai
-from config import settings
+from app.config import settings
 
 # Configure Gemini if API key is available
 if settings.GEMINI_API_KEY and not settings.STUB_MODE:
