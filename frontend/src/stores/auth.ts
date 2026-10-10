@@ -11,7 +11,7 @@ interface AuthState {
   isAuthenticated: () => boolean;
   initialize: () => Promise<void>;
   login: (email: string, password: string) => Promise<void>;
-  register: (email: string, password: string, name?: string, role?: string) => Promise<void>;
+  register: (email: string, password: string, name?: string, department?: string) => Promise<void>;
   logout: () => void;
   setToken: (token: string) => void;
   refresh: () => Promise<void>;
@@ -43,10 +43,11 @@ export const useAuthStore = create<AuthState>()(
         }
       },
 
-      register: async (email: string, password: string, name?: string, role?: string) => {
+      register: async (email: string, password: string, name?: string, department?: string) => {
         set({ isLoading: true });
         try {
-          const response = await api.post('/auth/register', { email, password, name, role });
+          // Role is assigned by the server (always 'user' for self-registration).
+          const response = await api.post('/auth/register', { email, password, name, department });
           const { token, refreshToken, user } = response.data;
           
           set({ 

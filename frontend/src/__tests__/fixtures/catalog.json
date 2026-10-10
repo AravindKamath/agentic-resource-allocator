@@ -1,0 +1,245 @@
+{
+    "categories": [
+        {
+            "key": "standard_computer",
+            "label": "Standard computer",
+            "description": "Desktop or laptop for everyday work: documents, browsing, coding, teaching.",
+            "specFields": [
+                "cpuCores",
+                "memoryGb",
+                "storageGb",
+                "storageType",
+                "operatingSystem",
+                "formFactor"
+            ]
+        },
+        {
+            "key": "workstation",
+            "label": "High-performance workstation",
+            "description": "Powerful machine for simulation, CAD, video editing or large datasets.",
+            "specFields": [
+                "cpuCores",
+                "memoryGb",
+                "storageGb",
+                "storageType",
+                "gpuModel",
+                "gpuMemoryGb",
+                "operatingSystem"
+            ]
+        },
+        {
+            "key": "server",
+            "label": "Server",
+            "description": "Always-on machine that hosts services, databases or shared workloads.",
+            "specFields": [
+                "cpuCores",
+                "memoryGb",
+                "storageGb",
+                "storageType",
+                "operatingSystem",
+                "networkSpeedGbps"
+            ]
+        },
+        {
+            "key": "gpu_system",
+            "label": "GPU-enabled system",
+            "description": "Machine with one or more GPUs for machine learning or GPU computing.",
+            "specFields": [
+                "gpuModel",
+                "gpuCount",
+                "gpuMemoryGb",
+                "cpuCores",
+                "memoryGb",
+                "storageGb",
+                "operatingSystem"
+            ]
+        },
+        {
+            "key": "networking",
+            "label": "Networking equipment",
+            "description": "Switches, routers, access points, cables and similar.",
+            "specFields": [
+                "networkPorts",
+                "networkSpeedGbps"
+            ]
+        },
+        {
+            "key": "storage",
+            "label": "Storage equipment",
+            "description": "External drives, NAS or other storage capacity.",
+            "specFields": [
+                "storageGb",
+                "storageType"
+            ]
+        },
+        {
+            "key": "other",
+            "label": "Other",
+            "description": "Anything else. Describe what you need in the description.",
+            "specFields": []
+        }
+    ],
+    "specFields": {
+        "cpuCores": {
+            "label": "CPU cores",
+            "type": "number",
+            "min": 1,
+            "max": 1024,
+            "integer": true,
+            "hint": "Leave blank if unsure"
+        },
+        "memoryGb": {
+            "label": "Memory (RAM)",
+            "type": "number",
+            "unit": "GB",
+            "min": 1,
+            "max": 65536,
+            "hint": "e.g. 16 for typical work, 64+ for heavy data work"
+        },
+        "storageGb": {
+            "label": "Storage",
+            "type": "number",
+            "unit": "GB",
+            "min": 1,
+            "max": 10000000
+        },
+        "storageType": {
+            "label": "Storage type",
+            "type": "enum",
+            "options": [
+                "hdd",
+                "ssd",
+                "nvme"
+            ]
+        },
+        "gpuModel": {
+            "label": "GPU model",
+            "type": "string",
+            "maxLength": 100,
+            "hint": "e.g. NVIDIA RTX 4090, or \"any CUDA-capable\""
+        },
+        "gpuCount": {
+            "label": "Number of GPUs",
+            "type": "number",
+            "min": 1,
+            "max": 64,
+            "integer": true
+        },
+        "gpuMemoryGb": {
+            "label": "GPU memory",
+            "type": "number",
+            "unit": "GB",
+            "min": 1,
+            "max": 4096
+        },
+        "operatingSystem": {
+            "label": "Operating system",
+            "type": "string",
+            "maxLength": 100,
+            "hint": "e.g. Windows 11, Ubuntu 22.04"
+        },
+        "formFactor": {
+            "label": "Form factor",
+            "type": "enum",
+            "options": [
+                "desktop",
+                "laptop",
+                "any"
+            ]
+        },
+        "networkPorts": {
+            "label": "Network ports",
+            "type": "number",
+            "min": 1,
+            "max": 1024,
+            "integer": true
+        },
+        "networkSpeedGbps": {
+            "label": "Network speed",
+            "type": "number",
+            "unit": "Gbps",
+            "min": 0.01,
+            "max": 1000
+        }
+    },
+    "urgencyLevels": [
+        {
+            "key": "low",
+            "label": "Low"
+        },
+        {
+            "key": "normal",
+            "label": "Normal"
+        },
+        {
+            "key": "high",
+            "label": "High"
+        },
+        {
+            "key": "critical",
+            "label": "Critical"
+        }
+    ],
+    "requestStatuses": [
+        {
+            "key": "RECEIVED",
+            "label": "Received"
+        },
+        {
+            "key": "UNDER_REVIEW",
+            "label": "Under review"
+        },
+        {
+            "key": "CLARIFICATION_REQUIRED",
+            "label": "Clarification required"
+        },
+        {
+            "key": "APPROVED",
+            "label": "Approved \u2013 awaiting allocation"
+        },
+        {
+            "key": "ALLOCATION_PENDING",
+            "label": "Allocation pending approval"
+        },
+        {
+            "key": "PARTIALLY_ALLOCATED",
+            "label": "Partially allocated"
+        },
+        {
+            "key": "ALLOCATED",
+            "label": "Allocated"
+        },
+        {
+            "key": "REJECTED",
+            "label": "Rejected"
+        },
+        {
+            "key": "CLOSED",
+            "label": "Closed"
+        }
+    ],
+    "terminalStatuses": [
+        "REJECTED",
+        "CLOSED"
+    ],
+    "assetStatuses": [
+        "available",
+        "reserved",
+        "allocated",
+        "maintenance",
+        "unavailable",
+        "retired"
+    ],
+    "adminSettableAssetStatuses": [
+        "available",
+        "maintenance",
+        "unavailable",
+        "retired"
+    ],
+    "assignmentStatuses": [
+        "proposed",
+        "active",
+        "rejected",
+        "released"
+    ]
+}

@@ -3,7 +3,10 @@ export interface User {
   email: string;
   role: 'admin' | 'agent' | 'user';
   name?: string;
+  department?: string;
 }
+
+export * from './resources';
 
 export interface Ticket {
   _id: string;

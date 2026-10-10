@@ -1,4 +1,12 @@
-# Smart Helpdesk with Agentic AI
+# Smart Helpdesk with Agentic AI → IT Resource Request & Allocation
+
+> **Current direction:** this codebase is being converted into an IT resource request and allocation platform for institutions. Requesters ask for computers, servers, GPUs, networking or storage; IT administrators review, approve and assign inventory. The core workflow (requests, inventory, assignments, lifecycle, authorization) is described in **[docs/IT_RESOURCE_WORKFLOW.md](docs/IT_RESOURCE_WORKFLOW.md)**. The original helpdesk features below remain available as "Support Tickets".
+>
+> Changes relevant to setup:
+> - Public registration always creates a `user`; promote administrators with `cd server && npm run set-role -- --email <email> --role admin`.
+> - Optional demo inventory: `cd server && npm run seed:inventory` (inserts only missing asset tags).
+> - Asset allocation requires a MongoDB replica set (Atlas qualifies) because it uses transactions.
+> - `npm test` in `server/` now runs Jest as native ESM against an in-memory replica set (no `.env` needed).
 
 A full-stack AI-powered helpdesk platform that combines a modern React frontend, a secure Node.js API, and a Python FastAPI agent worker for intelligent ticket triage.
 
@@ -272,7 +280,7 @@ Base URL: /api
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| POST | /auth/register | Register user |
+| POST | /auth/register | Register user (role is always `user`) |
 | POST | /auth/login | Login |
 | POST | /auth/refresh | Refresh access token |
 

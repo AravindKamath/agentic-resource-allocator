@@ -6,7 +6,6 @@ import { Link, Navigate, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../stores/auth';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
-import { Select } from '../components/ui/Select';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
 import toast from 'react-hot-toast';
 
@@ -15,9 +14,7 @@ const registerSchema = z.object({
   email: z.string().email('Please enter a valid email'),
   password: z.string().min(6, 'Password must be at least 6 characters'),
   confirmPassword: z.string(),
-  role: z.enum(['admin', 'agent', 'user'], {
-    message: 'Please select your role',
-  }),
+  department: z.string().max(200).optional(),
 }).refine((data) => data.password === data.confirmPassword, {
   message: "Passwords don't match",
   path: ["confirmPassword"],
@@ -38,14 +35,14 @@ export const Register: React.FC = () => {
   });
 
   if (user) {
-    return <Navigate to="/tickets" />;
+    return <Navigate to="/" />;
   }
 
   const onSubmit = async (data: RegisterForm) => {
     try {
-      await registerUser(data.email, data.password, data.name, data.role);
+      await registerUser(data.email, data.password, data.name, data.department);
       toast.success('Account created successfully!');
-      navigate('/tickets');
+      navigate('/');
     } catch (error: unknown) {
       const errorMessage = error instanceof Error && 'response' in error && 
         typeof error.response === 'object' && error.response !== null &&
@@ -61,7 +58,7 @@ export const Register: React.FC = () => {
     <div className="min-h-screen bg-gray-50 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-8">
         <div className="text-center">
-          <h1 className="text-3xl font-bold text-gray-900">Smart Helpdesk</h1>
+          <h1 className="text-3xl font-bold text-gray-900">IT Resource Desk</h1>
           <p className="mt-2 text-gray-600">Create your account</p>
         </div>
 
@@ -79,16 +76,12 @@ export const Register: React.FC = () => {
                 error={errors.name?.message}
               />
 
-              <Select
-                {...register('role')}
-                label="Role"
-                placeholder="Select your role"
-                options={[
-                  { value: 'user', label: 'User' },
-                  { value: 'agent', label: 'Agent' },
-                  { value: 'admin', label: 'Admin' },
-                ]}
-                error={errors.role?.message}
+              <Input
+                {...register('department')}
+                type="text"
+                label="Department (optional)"
+                placeholder="e.g. Computer Science"
+                error={errors.department?.message}
               />
 
               <Input

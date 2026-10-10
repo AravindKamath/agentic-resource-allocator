@@ -1,5 +1,9 @@
 import { request } from './setup.js';
-import nock from 'nock';
+import { startAgentStub } from './helpers/agentStub.js';
+
+let agentStub;
+beforeAll(async () => { agentStub = await startAgentStub(); });
+afterAll(() => agentStub.close());
 
 test('ticket creation triggers triage and persists suggestion', async () => {
   const lr = await request.post('/api/auth/login').send({ 
@@ -9,9 +13,7 @@ test('ticket creation triggers triage and persists suggestion', async () => {
   const token = lr.body.token;
 
   // Stub agent worker
-  nock('http://localhost:9000')
-    .post('/triage')
-    .reply(200, {
+  agentStub.reply({
       predictedCategory: 'billing',
       draftReply: 'Use KB [1]',
       citations: ['abc'],

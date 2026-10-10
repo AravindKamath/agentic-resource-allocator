@@ -6,6 +6,7 @@ const schema = new mongoose.Schema({
   email: { type: String, unique: true, index: true, required: true },
   passwordHash: { type: String, required: true },
   role: { type: String, enum: ['admin', 'agent', 'user'], default: 'user', index: true },
+  department: { type: String, trim: true, maxlength: 200 },
   createdAt: { type: Date, default: () => new Date() }
 });
 

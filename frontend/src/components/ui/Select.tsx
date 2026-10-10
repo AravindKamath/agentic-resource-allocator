@@ -17,7 +17,7 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
     return (
       <div className="space-y-1">
         {label && (
-          <label className="block text-sm font-medium text-gray-700">
+          <label htmlFor={props.id} className="block text-sm font-medium text-gray-700">
             {label}
           </label>
         )}

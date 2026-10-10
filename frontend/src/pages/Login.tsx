@@ -29,14 +29,14 @@ export const Login: React.FC = () => {
   });
 
   if (user) {
-    return <Navigate to="/tickets" />;
+    return <Navigate to="/" />;
   }
 
   const onSubmit = async (data: LoginForm) => {
     try {
       await login(data.email, data.password);
       toast.success('Welcome back!');
-      navigate('/tickets');
+      navigate('/');
     } catch (error: any) {
       toast.error(error.response?.data?.message || 'Login failed');
     }
@@ -46,7 +46,7 @@ export const Login: React.FC = () => {
     <div className="min-h-screen bg-gray-50 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-8">
         <div className="text-center">
-          <h1 className="text-3xl font-bold text-gray-900">Smart Helpdesk</h1>
+          <h1 className="text-3xl font-bold text-gray-900">IT Resource Desk</h1>
           <p className="mt-2 text-gray-600">Sign in to your account</p>
         </div>
 

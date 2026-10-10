@@ -7,7 +7,9 @@
     "dev": "NODE_ENV=development nodemon src/index.js",
     "start": "node src/index.js",
     "seed": "node src/seed/seed.js",
-    "test": "NODE_ENV=test jest --runInBand"
+    "test": "NODE_ENV=test NODE_OPTIONS=--experimental-vm-modules jest --runInBand",
+    "set-role": "node src/scripts/set-role.js",
+    "seed:inventory": "node src/scripts/seed-inventory.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

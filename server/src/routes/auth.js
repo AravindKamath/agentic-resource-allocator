@@ -12,17 +12,19 @@ const registerSchema = Joi.object({
     name: Joi.string().min(2).required(),
     email: Joi.string().email().required(),
     password: Joi.string().min(6).required(),
-    role: Joi.string().valid('admin', 'agent', 'user').default('user')
+    department: Joi.string().trim().max(200).allow('')
+    // No `role`: public registration always creates a 'user'. Unknown keys
+    // (including a client-supplied role) are stripped by validate().
   })
 });
 
 auth.post('/register', authLimiter, validate(registerSchema), async (req, res, next) => {
   try {
-    const { name, email, password, role } = req.body;
+    const { name, email, password, department } = req.body;
     const exists = await User.findOne({ email });
     if (exists) return res.status(409).json({ message: 'Email already registered' });
     
-    const user = new User({ name, email, role });
+    const user = new User({ name, email, role: 'user', department: department || undefined });
     await user.setPassword(password);
     await user.save();
     
@@ -32,7 +34,7 @@ auth.post('/register', authLimiter, validate(registerSchema), async (req, res, n
     res.json({ 
       token: access, 
       refreshToken: refresh, 
-      user: { id: user._id, name, email, role } 
+      user: { id: user._id, _id: user._id, name, email, role: user.role, department: user.department } 
     });
   } catch (e) { 
     next(e); 
@@ -64,7 +66,7 @@ auth.post('/login', authLimiter, validate(loginSchema), async (req, res, next) =
     res.json({ 
       token: access, 
       refreshToken: refresh, 
-      user: { id: user._id, name: user.name, email, role: user.role } 
+      user: { id: user._id, _id: user._id, name: user.name, email, role: user.role, department: user.department } 
     });
   } catch (e) { 
     next(e); 
