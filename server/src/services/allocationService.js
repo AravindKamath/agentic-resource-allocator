@@ -10,6 +10,7 @@ import {
   deriveAllocationStatus
 } from '../domain/resourceCatalog.js';
 import { runInTransaction } from '../utils/transactions.js';
+import { evaluateAsset, ELIGIBILITY } from '../domain/matching.js';
 import { httpError } from '../utils/httpError.js';
 import { notifyRequester } from './resourceRequestService.js';
 import { logger } from '../logger.js';
@@ -27,6 +28,21 @@ import { logger } from '../logger.js';
  * precondition then fails, so exactly one succeeds. A partial unique index on
  * Assignment {asset} where isCurrent=true is a second, database-level guard.
  */
+
+/**
+ * Authoritative compatibility check, run inside the transaction against the
+ * asset document as just claimed/updated and the request as read in the same
+ * session. Throwing here aborts the transaction (rolling back the claim).
+ */
+function assertCompatible(request, asset) {
+  const result = evaluateAsset(request, asset);
+  if (result.eligibility === ELIGIBILITY.INCOMPATIBLE) {
+    throw httpError(409, `Asset ${asset.assetTag} does not meet the request's requirements: ${result.failures.join('; ')}`, { code: 'ASSET_INCOMPATIBLE' });
+  }
+  if (result.eligibility === ELIGIBILITY.UNVERIFIED) {
+    throw httpError(409, `Asset ${asset.assetTag} cannot be verified against the request's requirements: ${result.unverified.join('; ')}. Complete the asset record first.`, { code: 'ASSET_UNVERIFIED' });
+  }
+}
 
 function assertId(id, what) {
   if (!mongoose.isValidObjectId(id)) throw httpError(404, `${what} not found`);
@@ -66,7 +82,8 @@ export async function assignAsset({ requestId, assetId, actor, mode = 'assign', 
   const proposing = mode === 'propose';
 
   const result = await runInTransaction(async (session) => {
-    const request = await ResourceRequest.findById(requestId).session(session).select('status quantity allocation title requester').lean();
+    const request = await ResourceRequest.findById(requestId).session(session)
+      .select('status quantity allocation title requester category specifications department').lean();
     if (!request) throw httpError(404, 'Request not found');
     if (!ALLOCATABLE_STATUSES.includes(request.status)) {
       throw httpError(409, `Assets cannot be assigned while the request is ${request.status}`);
@@ -85,6 +102,10 @@ export async function assignAsset({ requestId, assetId, actor, mode = 'assign', 
       if (!existing) throw httpError(404, 'Asset not found');
       throw httpError(409, `Asset ${existing.assetTag} is not available (status: ${existing.status})`);
     }
+
+    // 1b. Re-check compatibility on the claimed asset; never trust an earlier
+    //     (possibly stale) matching result supplied by the client.
+    assertCompatible(request, asset);
 
     // 2. Reserve capacity on the request; fails if it is full or changed status.
     const updatedRequest = await applyRequestAllocationChange(session, requestId, {
@@ -150,6 +171,11 @@ export async function approveAssignment({ assignmentId, actor }) {
       { new: true, session }
     );
     if (!asset) throw httpError(409, 'Asset is no longer reserved for this assignment');
+
+    // The asset record or request may have changed while reserved.
+    const requirementsOf = await ResourceRequest.findById(current.request).session(session)
+      .select('category specifications department').lean();
+    assertCompatible(requirementsOf, asset);
 
     const request = await applyRequestAllocationChange(session, current.request, {
       inc: { 'allocation.proposed': -1, 'allocation.active': 1 },

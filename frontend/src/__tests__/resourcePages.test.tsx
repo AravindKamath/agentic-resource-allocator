@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import catalog from './fixtures/catalog.json';
-import type { Catalog, ResourceRequestDetail, User } from '../types';
+import type { Catalog, MatchCandidate, MatchResult, ResourceRequestDetail, User } from '../types';
 import { useAuthStore } from '../stores/auth';
 import { useCatalogStore } from '../stores/catalog';
 import { resourceApi } from '../lib/resourceApi';
@@ -18,6 +18,7 @@ vi.mock('../lib/resourceApi', async (importOriginal) => {
       createRequest: vi.fn(),
       getRequest: vi.fn(),
       listAssets: vi.fn(),
+      matches: vi.fn(),
       assign: vi.fn(),
       transition: vi.fn(),
       respondToClarification: vi.fn(),
@@ -43,6 +44,37 @@ function baseRequest(overrides: Partial<ResourceRequestDetail> = {}): ResourceRe
     history: [{ _id: 'h1', type: 'created', from: null, to: 'RECEIVED', actor: { _id: 'u1', name: 'Ravi' }, actorRole: 'user', message: 'Request submitted', at: '2026-10-10T10:00:00Z' }],
     assignments: [], allowedTransitions: [], canEdit: false, canRespondToClarification: false,
     ...overrides,
+  };
+}
+
+function candidate(tag: string, eligibility: MatchCandidate['eligibility'], extra: Partial<MatchCandidate> = {}): MatchCandidate {
+  return {
+    asset: { _id: `as-${tag.toLowerCase().split('-')[1]}`, assetTag: tag, name: 'Fit node', category: 'gpu_system', specs: {} },
+    availability: { status: 'available', available: true },
+    eligibility, score: null, scoreBreakdown: [], comparisons: [], matches: [], failures: [], unverified: [], preferences: [],
+    ...extra,
+  };
+}
+
+function matchResult(): MatchResult {
+  return {
+    requestId: 'r00000000000000000000001', generatedAt: '2026-10-10T12:00:00Z', advisory: true,
+    method: { version: 'fit-v1', scoring: {} },
+    request: { status: 'APPROVED', category: 'gpu_system', quantity: 1, remaining: 1, allocatable: true },
+    requirements: [{ field: 'gpuMemoryGb', label: 'GPU memory', kind: 'minimum', value: 24, display: 'at least 24 GB' }],
+    warnings: [{ code: 'FREE_TEXT_GPU_MODEL', severity: 'info', message: 'GPU model is free text, so it is used for ranking only.' }],
+    candidates: {
+      eligible: [candidate('GPU-FIT', 'compatible', {
+        score: 60,
+        scoreBreakdown: [{ rule: 'fit', points: 60, message: 'Closeness of fit 100%' }],
+        comparisons: [{ field: 'gpuMemoryGb', label: 'GPU memory', required: 24, actual: 24, result: 'meets', message: 'meets' }],
+      })],
+      needsVerification: [candidate('GPU-UNK', 'unverified', { unverified: ['GPU memory not recorded on the asset'] })],
+      incompatible: [candidate('GPU-SMALL', 'incompatible', { failures: ['GPU memory 8 GB is below the required 24 GB'] })],
+      unavailable: [],
+    },
+    summary: { evaluated: 3, eligible: 1, needsVerification: 1, incompatible: 1, unavailable: 0, unavailableCompatible: 0, otherCategoryAvailable: 0 },
+    explanation: null,
   };
 }
 
@@ -86,30 +118,54 @@ describe('SubmitRequest', () => {
 });
 
 describe('RequestDetail', () => {
-  it('admin sees actions and can assign an available asset', async () => {
+  it('admin sees ranked compatible matches; only those can be assigned', async () => {
     useAuthStore.setState({ user: admin, token: 't', refreshToken: 'r' });
     api.getRequest.mockResolvedValue(baseRequest({
       allowedTransitions: [{ to: 'REJECTED', action: 'reject', requires: 'reason' }, { to: 'CLOSED', action: 'close', requires: 'reason' }],
     }));
-    api.listAssets.mockResolvedValue({
-      items: [{ _id: 'as1', assetTag: 'GPU-ML-001', name: 'ML node', category: 'gpu_system', status: 'available', specs: { gpuCount: 4 }, currentAssignment: null, createdAt: '', updatedAt: '' }],
-      total: 1, page: 1, limit: 50,
-    });
+    api.matches.mockResolvedValue(matchResult());
     api.assign.mockResolvedValue(baseRequest({ status: 'ALLOCATED', allocation: { active: 1, proposed: 0 } }));
 
     renderAt('/admin/requests/r1', <RequestDetail />, '/admin/requests/:id');
 
     expect(await screen.findByRole('heading', { name: 'GPU machine' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Reject request' })).toBeInTheDocument();
-    expect(screen.getByText('Ravi')).toBeInTheDocument();
-
     fireEvent.click(screen.getByRole('button', { name: 'Reject request' }));
     expect(screen.getByLabelText('Reason')).toBeInTheDocument();
 
-    const assignButton = await screen.findByRole('button', { name: 'Assign' });
-    fireEvent.click(assignButton);
-    await waitFor(() => expect(api.assign).toHaveBeenCalledWith('r00000000000000000000001', 'as1', 'assign'));
+    expect(await screen.findByText('Compatible and available (1)')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'GPU-FIT' })).toHaveAttribute('href', '/admin/inventory/as-fit');
+    expect(screen.getByText('+60: Closeness of fit 100%')).toBeInTheDocument();
+    expect(screen.getByText(/Needs verification \(1\)/)).toBeInTheDocument();
+    expect(screen.getByText('GPU memory not recorded on the asset')).toBeInTheDocument();
+    expect(screen.getByText(/Incompatible \(1\)/)).toBeInTheDocument();
+    expect(screen.getByText('GPU memory 8 GB is below the required 24 GB')).toBeInTheDocument();
+    expect(screen.getByText(/free text/)).toBeInTheDocument(); // request-level warning
+
+    // exactly one Assign button: the eligible candidate
+    const assignButtons = screen.getAllByRole('button', { name: 'Assign' });
+    expect(assignButtons).toHaveLength(1);
+    fireEvent.click(assignButtons[0]);
+    await waitFor(() => expect(api.assign).toHaveBeenCalledWith('r00000000000000000000001', 'as-fit', 'assign'));
     expect(await screen.findByText('Allocated')).toBeInTheDocument();
+  });
+
+  it('shows a read-only preview before approval and an explanation when nothing matches', async () => {
+    useAuthStore.setState({ user: admin, token: 't', refreshToken: 'r' });
+    api.getRequest.mockResolvedValue(baseRequest({ status: 'UNDER_REVIEW' }));
+    const preview = matchResult();
+    api.matches.mockResolvedValue({
+      ...preview,
+      request: { ...preview.request, status: 'UNDER_REVIEW', allocatable: false },
+      candidates: { ...preview.candidates, eligible: [] },
+      explanation: 'No available asset satisfies every stated requirement.',
+    });
+
+    renderAt('/admin/requests/r1', <RequestDetail />, '/admin/requests/:id');
+
+    expect(await screen.findByText('Inventory check')).toBeInTheDocument();
+    expect(screen.getByText('No available asset satisfies every stated requirement.')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Assign' })).not.toBeInTheDocument();
   });
 
   it('requester sees the clarification question and no admin controls', async () => {
@@ -127,6 +183,7 @@ describe('RequestDetail', () => {
     expect(screen.getByRole('button', { name: 'Send response' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Withdraw request' })).toBeInTheDocument();
     expect(screen.queryByText('Assign resources')).not.toBeInTheDocument();
-    expect(api.listAssets).not.toHaveBeenCalled();
+    expect(screen.queryByText('Inventory check')).not.toBeInTheDocument();
+    expect(api.matches).not.toHaveBeenCalled();
   });
 });

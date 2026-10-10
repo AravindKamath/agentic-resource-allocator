@@ -24,7 +24,10 @@ export function assetBody(overrides = {}) {
     category: 'gpu_system',
     manufacturer: 'Acme',
     model: 'X1',
-    specs: { gpuCount: 1, gpuMemoryGb: 24 },
+    // Satisfies requestBody()'s default requirements, so the default fixtures
+    // are compatible under the allocation-time compatibility check.
+    specs: { gpuCount: 1, gpuMemoryGb: 24, memoryGb: 64 },
+    operatingSystem: 'Ubuntu 22.04',
     ...overrides
   };
 }

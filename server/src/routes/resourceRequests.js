@@ -22,6 +22,7 @@ import {
   getAdminOverview
 } from '../services/resourceRequestService.js';
 import { assignAsset } from '../services/allocationService.js';
+import { getMatches } from '../services/matchingService.js';
 
 export const resourceRequests = Router();
 
@@ -61,6 +62,11 @@ resourceRequests.post('/:id/transitions', validate(transitionSchema), wrap(async
 
 resourceRequests.post('/:id/clarification-response', validate(clarificationResponseSchema), wrap(async (req, res) => {
   res.json({ request: await respondToClarification(req.params.id, req.user, req.body) });
+}));
+
+// Advisory, read-only candidate ranking for administrators.
+resourceRequests.get('/:id/matches', requireRole('admin'), validate(idOnly), wrap(async (req, res) => {
+  res.json(await getMatches(req.params.id));
 }));
 
 resourceRequests.post('/:id/assignments', requireRole('admin'), validate(assignSchema), wrap(async (req, res) => {

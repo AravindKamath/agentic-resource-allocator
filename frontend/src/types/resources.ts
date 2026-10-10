@@ -157,3 +157,65 @@ export interface AdminOverview {
   assetsByStatus: Record<AssetStatus, number>;
   assignments: { proposed: number; active: number };
 }
+
+// GET /api/requests/:id/matches (advisory; see docs/IT_RESOURCE_WORKFLOW.md)
+export type Eligibility = 'compatible' | 'unverified' | 'incompatible';
+
+export interface MatchRequirement {
+  field: string;
+  label: string;
+  kind: 'exact' | 'minimum' | 'minimum_tier' | 'compatibility' | 'capability' | 'preference';
+  value: unknown;
+  display: string;
+}
+
+export interface MatchWarning {
+  code: string;
+  severity: 'warning' | 'info';
+  message: string;
+  field?: string;
+  fields?: string[];
+}
+
+export interface MatchComparison {
+  field: string;
+  label: string;
+  required: unknown;
+  actual: unknown;
+  result: 'meets' | 'exceeds' | 'fails' | 'missing';
+  message: string;
+}
+
+export interface MatchCandidate {
+  asset: Omit<AssetRef, 'status'> & { specs: Specs };
+  availability: { status: AssetStatus; available: boolean };
+  eligibility: Eligibility;
+  score: number | null;
+  scoreBreakdown: { rule: string; points: number; message: string }[];
+  comparisons: MatchComparison[];
+  matches: string[];
+  failures: string[];
+  unverified: string[];
+  preferences: string[];
+}
+
+export interface MatchResult {
+  requestId: string;
+  generatedAt: string;
+  advisory: true;
+  method: { version: string; scoring: Record<string, number> };
+  request: { status: RequestStatus; category: string; quantity: number; remaining: number; allocatable: boolean };
+  requirements: MatchRequirement[];
+  warnings: MatchWarning[];
+  candidates: {
+    eligible: MatchCandidate[];
+    needsVerification: MatchCandidate[];
+    incompatible: MatchCandidate[];
+    unavailable: MatchCandidate[];
+  };
+  summary: {
+    evaluated: number; eligible: number; needsVerification: number; incompatible: number;
+    unavailable: number; unavailableCompatible: number; otherCategoryAvailable: number;
+  };
+  explanation: string | null;
+}

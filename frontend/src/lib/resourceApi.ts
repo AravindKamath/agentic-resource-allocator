@@ -1,6 +1,6 @@
 import api from './api';
 import type {
-  AdminOverview, Asset, Assignment, Catalog, Paged, RequestRequirements,
+  AdminOverview, Asset, Assignment, Catalog, MatchResult, Paged, RequestRequirements,
   RequestStatus, ResourceRequestDetail, ResourceRequestSummary, Specs
 } from '../types';
 
@@ -23,6 +23,7 @@ export const resourceApi = {
     (await api.post<{ request: ResourceRequestDetail }>(`/requests/${id}/transitions`, { to, ...extra })).data.request,
   respondToClarification: async (id: string, message: string, updates: Partial<RequestRequirements> = {}) =>
     (await api.post<{ request: ResourceRequestDetail }>(`/requests/${id}/clarification-response`, { message, updates })).data.request,
+  matches: async (id: string) => (await api.get<MatchResult>(`/requests/${id}/matches`)).data,
   assign: async (id: string, assetId: string, mode: 'assign' | 'propose', notes?: string) =>
     (await api.post<{ request: ResourceRequestDetail }>(`/requests/${id}/assignments`, { assetId, mode, notes })).data.request,
 

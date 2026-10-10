@@ -127,7 +127,7 @@ test('multi-asset requests move through PARTIALLY_ALLOCATED to ALLOCATED', async
 
 test('proposed allocations reserve the asset and can be approved or rejected', async () => {
   const req = await createApprovedRequest(t.user, t.admin, { quantity: 2, category: 'standard_computer', specifications: {} });
-  const [x, y] = [await createAsset(t.admin), await createAsset(t.admin)];
+  const [x, y] = [await createAsset(t.admin, { category: 'standard_computer' }), await createAsset(t.admin, { category: 'standard_computer' })];
 
   const px = await assign(t.admin, req._id, x._id, 'propose');
   expect(px.status).toBe(201);

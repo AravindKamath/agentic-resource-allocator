@@ -9,7 +9,7 @@ import { ErrorCard, LoadingCard } from '../../components/resources/PageState';
 import { SpecList } from '../../components/resources/SpecList';
 import { HistoryTimeline } from '../../components/resources/HistoryTimeline';
 import { ReasonForm } from '../../components/resources/ReasonForm';
-import { AssignAssetPanel } from '../../components/resources/AssignAssetPanel';
+import { MatchingPanel } from '../../components/resources/MatchingPanel';
 import { categoryLabel, formatDate, formatDay, shortId, urgencyLabel, useCatalog } from '../../components/resources/useCatalog';
 import { errorMessage, resourceApi } from '../../lib/resourceApi';
 import { useAuthStore } from '../../stores/auth';
@@ -17,8 +17,6 @@ import type { AllowedTransition, Assignment, ResourceRequestDetail } from '../..
 import { RequestFields } from './RequestFields';
 import { toRequestPayload, validateRequestForm, type RequestFormErrors, type RequestFormValues } from './requestForm';
 import { Textarea } from '../../components/ui/Textarea';
-
-const ALLOCATABLE = ['APPROVED', 'ALLOCATION_PENDING', 'PARTIALLY_ALLOCATED'];
 
 const ACTION_LABELS: Record<string, string> = {
   start_review: 'Start review',
@@ -106,8 +104,9 @@ export const RequestDetail: React.FC = () => {
   });
 
   const requirements = showOriginal ? request.original : request;
-  const canAssign = isAdmin && ALLOCATABLE.includes(request.status) &&
-    request.allocation.active + request.allocation.proposed < request.quantity;
+  // Admins see ranked matches for any open request: a read-only preview during
+  // review, with Assign/Reserve once the server reports the request allocatable.
+  const showMatching = isAdmin && !['REJECTED', 'CLOSED', 'ALLOCATED'].includes(request.status);
 
   return (
     <div className="space-y-6">
@@ -295,7 +294,7 @@ export const RequestDetail: React.FC = () => {
         </CardContent>
       </Card>
 
-      {canAssign && <AssignAssetPanel catalog={catalog} request={request} onAssigned={setRequest} />}
+      {showMatching && <MatchingPanel catalog={catalog} request={request} onAssigned={setRequest} />}
 
       <Card>
         <CardHeader><CardTitle>History</CardTitle></CardHeader>
