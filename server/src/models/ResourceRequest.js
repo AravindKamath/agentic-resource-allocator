@@ -84,6 +84,15 @@ const schema = new mongoose.Schema({
     closedAt: Date
   },
 
+  automation: {
+    status: { type: String, enum: ['not_processed', 'processing', 'allocated', 'escalated', 'failed'], default: 'not_processed' },
+    outcomeCode: { type: String, enum: ['NONE', 'MISSING_REQUIREMENTS', 'UNCLASSIFIED_REQUEST', 'INVALID_EXTRACTION', 'NO_COMPATIBLE_ASSET', 'INSUFFICIENT_QUANTITY', 'ALLOCATION_CONFLICT', 'EXTRACTION_UNAVAILABLE'] },
+    reason: { type: String, maxlength: 2000 },
+    sourceHash: { type: String, maxlength: 128 },
+    extraction: { type: mongoose.Schema.Types.Mixed, default: undefined },
+    processedAt: Date
+  },
+
   history: { type: [historySchema], default: [] }
 }, { timestamps: true });
 

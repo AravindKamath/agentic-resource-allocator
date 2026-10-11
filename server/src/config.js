@@ -14,6 +14,12 @@ export const config = {
     timeoutMs: Number(process.env.AGENT_TIMEOUT_MS || 8000),
     retry: Number(process.env.AGENT_RETRY || 2)
   },
+  resourceAutomation: {
+    enabled: process.env.RESOURCE_AUTOMATION_ENABLED === 'true' || (
+      process.env.RESOURCE_AUTOMATION_ENABLED !== 'false' &&
+      (process.env.NODE_ENV || 'development') !== 'test'
+    )
+  },
   defaults: {
     autoCloseEnabled: process.env.AUTO_CLOSE_ENABLED === 'true',
     confidenceThreshold: Number(process.env.CONFIDENCE_THRESHOLD || 0.78),

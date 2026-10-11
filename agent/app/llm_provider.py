@@ -1,6 +1,9 @@
-from typing import List, Dict
+from typing import List, Dict, Any
 import google.generativeai as genai
 from app.config import settings
+import hashlib
+import json
+import re
 
 # Configure Gemini if API key is available
 if settings.GEMINI_API_KEY and not settings.STUB_MODE:
@@ -11,6 +14,148 @@ TECH = {"error", "bug", "stack", "crash", "login", "auth", "trace"}
 SHIP = {"delivery", "shipment", "shipping", "package", "track", "courier", "delayed"}
 
 class LLMProvider:
+    RESOURCE_CATEGORIES = {
+        "standard_computer", "workstation", "server", "gpu_system",
+        "networking", "storage", "other"
+    }
+    SPEC_FIELDS = {
+        "cpuCores", "memoryGb", "storageGb", "storageType", "gpuModel",
+        "gpuCount", "gpuMemoryGb", "operatingSystem", "formFactor",
+        "networkPorts", "networkSpeedGbps"
+    }
+
+    def extract_resource_request(self, request: Dict[str, Any]) -> Dict[str, Any]:
+        source = " ".join([
+            request.get("title", ""),
+            request.get("purpose", ""),
+            request.get("description", "")
+        ]).strip()
+        source_hash = hashlib.sha256(source.encode("utf-8")).hexdigest()
+        if settings.STUB_MODE:
+            result = self._stub_resource_extraction(request, source)
+        else:
+            result = self._gemini_resource_extraction(request, source)
+        result["sourceHash"] = source_hash
+        result["model"] = "deterministic-resource-extractor" if settings.STUB_MODE else settings.MODEL
+        return result
+
+    def _normalise_resource_result(self, result: Dict[str, Any], request: Dict[str, Any]) -> Dict[str, Any]:
+        category = result.get("category") or request.get("category")
+        specifications = result.get("specifications") or {}
+        specifications = {k: v for k, v in specifications.items() if k in self.SPEC_FIELDS and v not in ("", None)}
+        quantity = result.get("quantity") or request.get("quantity", 1)
+        missing = list(dict.fromkeys(str(v) for v in result.get("missingFields", [])))
+        ambiguities = list(dict.fromkeys(str(v) for v in result.get("ambiguities", [])))
+        if category not in self.RESOURCE_CATEGORIES:
+            return {
+                "extractionStatus": "UNSUPPORTED",
+                "escalationOutcome": "HUMAN_REVIEW",
+                "category": None,
+                "purpose": request.get("purpose"),
+                "specifications": specifications,
+                "quantity": quantity,
+                "missingFields": missing,
+                "ambiguities": ambiguities,
+                "confidence": result.get("confidence"),
+                "reason": "The request could not be classified into a supported resource category."
+            }
+        if not specifications and category != "other":
+            missing.append("specifications")
+        if missing or ambiguities:
+            return {
+                "extractionStatus": "NEEDS_CLARIFICATION",
+                "escalationOutcome": "REQUEST_CLARIFICATION",
+                "category": category,
+                "purpose": result.get("purpose") or request.get("purpose"),
+                "specifications": specifications,
+                "quantity": quantity,
+                "missingFields": missing,
+                "ambiguities": ambiguities,
+                "confidence": result.get("confidence"),
+                "reason": result.get("reason") or "More specific resource requirements are needed before automatic allocation."
+            }
+        return {
+            "extractionStatus": "EXTRACTED",
+            "escalationOutcome": "NONE",
+            "category": category,
+            "purpose": result.get("purpose") or request.get("purpose"),
+            "specifications": specifications,
+            "quantity": quantity,
+            "missingFields": [],
+            "ambiguities": [],
+            "confidence": result.get("confidence"),
+            "reason": result.get("reason") or "Requirements extracted and ready for deterministic matching."
+        }
+
+    def _stub_resource_extraction(self, request: Dict[str, Any], source: str) -> Dict[str, Any]:
+        text = source.lower()
+        category = request.get("category")
+        if not category:
+            if "server" in text:
+                category = "server"
+            elif any(word in text for word in ("gpu", "machine learning", "ml workstation")):
+                category = "gpu_system"
+            elif any(word in text for word in ("switch", "router", "network")):
+                category = "networking"
+            elif any(word in text for word in ("storage", "nas", "drive")):
+                category = "storage"
+            elif any(word in text for word in ("computer", "laptop", "workstation", "desktop")):
+                category = "standard_computer"
+        specs = dict(request.get("specifications") or {})
+        patterns = {
+            "cpuCores": r"(?:at least|minimum|with)?\s*(\d+)\s*(?:cpu\s*)?cores?",
+            "memoryGb": r"(\d+)\s*(?:gb|gib)\s*(?:ram|memory)",
+            "storageGb": r"(\d+)\s*(?:gb|tb)\s*(?:storage|disk)",
+            "gpuMemoryGb": r"(\d+)\s*(?:gb|gib)\s*(?:gpu|vram)",
+            "gpuCount": r"(\d+)\s*gpus?",
+            "networkPorts": r"(\d+)[-\s]?port",
+        }
+        for field, pattern in patterns.items():
+            match = re.search(pattern, text)
+            if match and field not in specs:
+                value = int(match.group(1))
+                if field == "storageGb" and ("tb" in match.group(0)):
+                    value *= 1024
+                specs[field] = value
+        if "nvme" in text:
+            specs.setdefault("storageType", "nvme")
+        elif "ssd" in text:
+            specs.setdefault("storageType", "ssd")
+        elif "hdd" in text:
+            specs.setdefault("storageType", "hdd")
+        if "ubuntu" in text:
+            specs.setdefault("operatingSystem", "Ubuntu 22.04")
+        elif "windows" in text:
+            specs.setdefault("operatingSystem", "Windows 11")
+        if category == "gpu_system" and "gpuCount" not in specs:
+            specs["gpuCount"] = 1
+        missing = []
+        if category in {"gpu_system", "workstation"} and "memoryGb" not in specs:
+            missing.append("memoryGb")
+        if category == "gpu_system" and "gpuMemoryGb" not in specs:
+            missing.append("gpuMemoryGb")
+        return self._normalise_resource_result({
+            "category": category,
+            "specifications": specs,
+            "quantity": request.get("quantity", 1),
+            "missingFields": missing,
+            "confidence": 0.9 if not missing else 0.45
+        }, request)
+
+    def _gemini_resource_extraction(self, request: Dict[str, Any], source: str) -> Dict[str, Any]:
+        prompt = f"""Extract IT resource requirements as JSON only.
+Supported categories: standard_computer, workstation, server, gpu_system, networking, storage, other.
+Allowed specification keys: {sorted(self.SPEC_FIELDS)}.
+Do not guess. Use missingFields or ambiguities when the text is unclear.
+Return category, specifications, quantity, missingFields, ambiguities, confidence, reason.
+Request: {source}"""
+        model = genai.GenerativeModel(settings.MODEL)
+        response = model.generate_content(prompt, generation_config={"response_mime_type": "application/json"})
+        try:
+            result = json.loads(response.text)
+        except (json.JSONDecodeError, TypeError) as error:
+            raise ValueError("Gemini returned invalid resource extraction JSON") from error
+        return self._normalise_resource_result(result, request)
     def classify(self, text: str) -> Dict:
         """
         Classify ticket text into categories with confidence score.
