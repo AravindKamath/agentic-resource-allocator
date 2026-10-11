@@ -1,6 +1,6 @@
 from fastapi import FastAPI, HTTPException
-from schemas import TriageRequest, TriageResponse, StepLog
-from pipeline import run_pipeline
+from app.schemas import TriageRequest, TriageResponse, StepLog
+from app.pipeline import run_pipeline
 
 app = FastAPI(title="Agent Worker", version="1.0.0")
 

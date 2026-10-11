@@ -1,5 +1,9 @@
 import { request } from './setup.js';
-import nock from 'nock';
+import { startAgentStub } from './helpers/agentStub.js';
+
+let agentStub;
+beforeAll(async () => { agentStub = await startAgentStub(); });
+afterAll(() => agentStub.close());
 
 test('audit timeline present', async () => {
   const lr = await request.post('/api/auth/login').send({ 
@@ -8,9 +12,7 @@ test('audit timeline present', async () => {
   });
   const token = lr.body.token;
 
-  nock('http://localhost:9000')
-    .post('/triage')
-    .reply(200, {
+  agentStub.reply({
       predictedCategory: 'tech',
       draftReply: 'Check KB',
       citations: [],
@@ -39,5 +41,6 @@ test('audit timeline present', async () => {
     .set('Authorization', `Bearer ${token}`);
     
   expect(audit.statusCode).toBe(200);
-  expect(audit.body.some(e => e.action === 'TICKET_CREATED')).toBe(true);
+  // GET /api/tickets/:id/audit is served by the tickets router, which returns { timeline, ... }
+  expect(audit.body.timeline.some(e => e.action === 'TICKET_CREATED')).toBe(true);
 });

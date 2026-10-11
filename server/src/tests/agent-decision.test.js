@@ -1,5 +1,9 @@
 import { request } from './setup.js';
-import nock from 'nock';
+import { startAgentStub } from './helpers/agentStub.js';
+
+let agentStub;
+beforeAll(async () => { agentStub = await startAgentStub(); });
+afterAll(() => agentStub.close());
 
 test('waiting_human when below threshold', async () => {
   const lr = await request.post('/api/auth/login').send({ 
@@ -8,9 +12,7 @@ test('waiting_human when below threshold', async () => {
   });
   const token = lr.body.token;
 
-  nock('http://localhost:9000')
-    .post('/triage')
-    .reply(200, {
+  agentStub.reply({
       predictedCategory: 'other',
       draftReply: 'Not sure',
       citations: [],

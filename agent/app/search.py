@@ -2,7 +2,7 @@ from typing import List, Dict, Tuple
 import math
 import re
 from collections import Counter
-from config import settings
+from app.config import settings
 
 def enhanced_keyword_score(query: str, doc: Dict) -> float:
     """Enhanced scoring with better relevance calculation"""

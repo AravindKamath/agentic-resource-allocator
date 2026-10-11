@@ -7,7 +7,12 @@ import {
   Settings, 
   LogOut,
   User,
-  BarChart3
+  BarChart3,
+  ClipboardList,
+  LayoutDashboard,
+  Inbox,
+  Server,
+  Link2
 } from 'lucide-react';
 import { Button } from './ui/Button';
 import { NotificationBell } from './ui/NotificationBell';
@@ -20,9 +25,15 @@ export const Layout: React.FC = () => {
     return <Navigate to="/login" />;
   }
 
+  const isAdmin = user.role === 'admin';
   const navigation = [
+    { name: 'Overview', href: '/admin', icon: LayoutDashboard, show: isAdmin, exact: true },
+    { name: 'Request Queue', href: '/admin/requests', icon: Inbox, show: isAdmin },
+    { name: 'Inventory', href: '/admin/inventory', icon: Server, show: isAdmin },
+    { name: 'Assignments', href: '/admin/assignments', icon: Link2, show: isAdmin },
+    { name: 'My Requests', href: '/requests', icon: ClipboardList, show: true },
     {
-      name: 'Tickets',
+      name: 'Support Tickets',
       href: '/tickets',
       icon: Ticket,
       show: true,
@@ -52,7 +63,7 @@ export const Layout: React.FC = () => {
       {/* Sidebar */}
       <div className="fixed inset-y-0 left-0 z-50 w-64 bg-white shadow-lg">
         <div className="flex h-16 items-center justify-center border-b border-gray-200">
-          <h1 className="text-xl font-bold text-gray-900">Smart Helpdesk</h1>
+          <h1 className="text-xl font-bold text-gray-900">IT Resource Desk</h1>
         </div>
         
         <nav className="mt-8 px-4">
@@ -60,7 +71,9 @@ export const Layout: React.FC = () => {
             {navigation
               .filter(item => item.show)
               .map((item) => {
-                const isActive = location.pathname.startsWith(item.href);
+                const isActive = 'exact' in item && item.exact
+                  ? location.pathname === item.href
+                  : location.pathname === item.href || location.pathname.startsWith(`${item.href}/`);
                 return (
                   <li key={item.name}>
                     <Link
@@ -86,7 +99,7 @@ export const Layout: React.FC = () => {
               <User className="h-5 w-5 text-gray-400" />
               <div>
                 <p className="text-sm font-medium text-gray-900">{user.email}</p>
-                <p className="text-xs text-gray-500 capitalize">{user.role}</p>
+                <p className="text-xs text-gray-500 capitalize">{user.role}{user.department ? ` · ${user.department}` : ''}</p>
               </div>
             </div>
             <Button

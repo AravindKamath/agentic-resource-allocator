@@ -14,6 +14,10 @@ import { cfg } from './routes/config.js';
 import { audit } from './routes/audit.js';
 import { notifications } from './routes/notifications.js';
 import replies from './routes/replies.js';
+import { resourceRequests } from './routes/resourceRequests.js';
+import { assets } from './routes/assets.js';
+import { assignments } from './routes/assignments.js';
+import { catalog } from './routes/catalog.js';
 import { writeLimiter } from './middleware/rateLimit.js';
 
 export function createApp() {
@@ -34,6 +38,10 @@ export function createApp() {
   app.use('/api/config', cfg);
   app.use('/api/notifications', notifications);
   app.use('/api/replies', replies);
+  app.use('/api/catalog', catalog);
+  app.use('/api/requests', writeLimiter, resourceRequests);
+  app.use('/api/assets', writeLimiter, assets);
+  app.use('/api/assignments', writeLimiter, assignments);
   app.use('/api', audit);
 
   app.use('*', (req, res) => res.status(404).json({ message: 'Not found' }));

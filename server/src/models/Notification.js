@@ -4,7 +4,7 @@ const schema = new mongoose.Schema({
   userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
   type: { 
     type: String, 
-    enum: ['ticket_created', 'ticket_assigned', 'ticket_replied', 'ticket_closed', 'ticket_auto_resolved', 'ticket_resolved'], 
+    enum: ['ticket_created', 'ticket_assigned', 'ticket_replied', 'ticket_closed', 'ticket_auto_resolved', 'ticket_resolved', 'request_update'], 
     required: true 
   },
   message: { type: String, required: true },

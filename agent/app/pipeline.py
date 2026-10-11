@@ -1,7 +1,7 @@
 from typing import Dict, Any, List
-from llm_provider import provider
-from search import top_k
-from config import settings
+from app.llm_provider import provider
+from app.search import top_k
+from app.config import settings
 import uuid
 import time
 

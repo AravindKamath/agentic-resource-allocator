@@ -1,3 +1,4 @@
+import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { useEffect } from 'react';
 import { Toaster } from 'react-hot-toast';
@@ -12,8 +13,24 @@ import { KnowledgeBase } from './pages/KnowledgeBase';
 import { KBEditor } from './pages/KBEditor';
 import { Settings } from './pages/Settings';
 import AgentDashboard from './pages/AgentDashboard';
+import { MyRequests } from './pages/requests/MyRequests';
+import { SubmitRequest } from './pages/requests/SubmitRequest';
+import { RequestDetail } from './pages/requests/RequestDetail';
+import { AdminOverview } from './pages/admin/AdminOverview';
+import { RequestQueue } from './pages/admin/RequestQueue';
+import { Inventory } from './pages/admin/Inventory';
+import { AssetEditor } from './pages/admin/AssetEditor';
+import { Assignments } from './pages/admin/Assignments';
 import { useAuthStore } from './stores/auth';
 import './utils/apiTest'; // Import the test function to make it available on window
+
+// Landing page depends on role: administrators manage, everyone else requests.
+function HomeRedirect() {
+  const { user } = useAuthStore();
+  return <Navigate to={user?.role === 'admin' ? '/admin' : '/requests'} replace />;
+}
+
+const adminOnly = (element: React.ReactNode) => <ProtectedRoute roles={['admin']}>{element}</ProtectedRoute>;
 
 function App() {
   const { initialize } = useAuthStore();
@@ -60,7 +77,20 @@ function App() {
               </ProtectedRoute>
             }
           >
-            <Route index element={<Navigate to="/tickets" />} />
+            <Route index element={<HomeRedirect />} />
+
+            <Route path="requests" element={<MyRequests />} />
+            <Route path="requests/new" element={<SubmitRequest />} />
+            <Route path="requests/:id" element={<RequestDetail />} />
+
+            <Route path="admin" element={adminOnly(<AdminOverview />)} />
+            <Route path="admin/requests" element={adminOnly(<RequestQueue />)} />
+            <Route path="admin/requests/:id" element={adminOnly(<RequestDetail />)} />
+            <Route path="admin/inventory" element={adminOnly(<Inventory />)} />
+            <Route path="admin/inventory/new" element={adminOnly(<AssetEditor />)} />
+            <Route path="admin/inventory/:id" element={adminOnly(<AssetEditor />)} />
+            <Route path="admin/assignments" element={adminOnly(<Assignments />)} />
+
             <Route path="tickets" element={<TicketsList />} />
             <Route 
               path="tickets/new" 

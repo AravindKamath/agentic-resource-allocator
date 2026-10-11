@@ -59,9 +59,7 @@ cd agent
 python3 -m venv .venv && . .venv/bin/activate
 pip install -r requirements.txt
 # create .env (STUB_MODE=true)
-uvicorn main:app --app-dir app --host 127.0.0.1 --port 9000 --reload
-#   NOTE: the documented `uvicorn app.main:app` fails — see blockers below.
-#   Equivalent alternative: (cd app && uvicorn main:app --port 9000)
+uvicorn app.main:app --host 127.0.0.1 --port 9000 --reload   # run from agent/ (B1 fixed)
 # check GET http://localhost:9000/healthz
 
 # 3. Frontend (new terminal)
@@ -109,7 +107,7 @@ Order matters: **MongoDB → API** (the API exits if Mongo is unreachable). The 
 
 | # | Blocker | Evidence | Workaround (without code changes) |
 |---|---|---|---|
-| B1 | `uvicorn app.main:app` (README, agent README, **Dockerfile CMD**) raises `ModuleNotFoundError: schemas`. The modules use bare imports (`from schemas import …`, `from pipeline import …`, `from config import …`) and `app/` has no `__init__.py`. | [main.py:2-3](../../agent/app/main.py#L2-L3), [pipeline.py:2-4](../../agent/app/pipeline.py#L2-L4), [test_enhanced_kb.py:8](../../agent/test_enhanced_kb.py#L8) (which adds `app/` to `sys.path`, confirming the intended layout) | `uvicorn main:app --app-dir app` or run from inside `app/`. The Docker image as written is expected to crash on start. |
+| B1 | **Fixed.** `uvicorn app.main:app` used to raise `ModuleNotFoundError: schemas` because modules used bare imports and `app/` was not a package. `app/` now has `__init__.py` and uses `from app.<module> import …`, so the documented command and the Dockerfile `CMD` work when run from `agent/`. | [main.py:2-3](../../agent/app/main.py#L2-L3) | Run from the `agent/` directory. |
 | B2 | `docker-compose.yml` referenced by the READMEs does not exist (and is gitignored). No Mongo container definition anywhere. | [.gitignore](../../.gitignore) last lines | Run services natively, or write a compose file in a later task. |
 | B3 | `.env.example` hostnames `mongo` and `agent` only resolve inside Docker. | [server/.env.example](../../server/.env.example) | Use `localhost`. |
 | B4 | No startup validation of `JWT_SECRET`/`REFRESH_SECRET`. The server boots but auth returns 500. | [utils/jwt.js](../../server/src/utils/jwt.js) | Set both. |
