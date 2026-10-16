@@ -85,7 +85,9 @@ export async function processResourceRequest(requestId) {
       }
     });
 
-    const admin = await User.findOne({ role: 'admin' }).lean();
+    const admin = await User.findOne(
+      config.gmail.adminEmail ? { email: config.gmail.adminEmail, role: 'admin' } : { role: 'admin' }
+    ).lean();
     if (!admin) {
       await mark(requestId, { 'automation.status': 'escalated', 'automation.outcomeCode': 'EXTRACTION_UNAVAILABLE', 'automation.reason': 'No administrator account is available for automation.' });
       return { status: 'escalated' };

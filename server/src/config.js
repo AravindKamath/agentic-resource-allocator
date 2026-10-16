@@ -20,6 +20,18 @@ export const config = {
       (process.env.NODE_ENV || 'development') !== 'test'
     )
   },
+  gmail: {
+    enabled: process.env.GMAIL_ENABLED === 'true',
+    adminEmail: process.env.ADMIN_EMAIL?.trim().toLowerCase() || '',
+    clientId: process.env.GMAIL_CLIENT_ID || '',
+    clientSecret: process.env.GMAIL_CLIENT_SECRET || '',
+    redirectUri: process.env.GMAIL_REDIRECT_URI || '',
+    refreshToken: process.env.GMAIL_REFRESH_TOKEN || '',
+    userEmail: process.env.GMAIL_USER_EMAIL || '',
+    writeRefreshToken: process.env.GMAIL_WRITE_REFRESH_TOKEN === 'true',
+    label: process.env.GMAIL_LABEL || 'INBOX',
+    pollIntervalMs: Number(process.env.GMAIL_POLL_INTERVAL_MS || 30000)
+  },
   defaults: {
     autoCloseEnabled: process.env.AUTO_CLOSE_ENABLED === 'true',
     confidenceThreshold: Number(process.env.CONFIDENCE_THRESHOLD || 0.78),

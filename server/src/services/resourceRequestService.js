@@ -39,7 +39,7 @@ async function loadVisible(id, user) {
   return request;
 }
 
-export async function createRequest(user, body) {
+export async function createRequest(user, body, { triggerAutomation = true, inboundEmail } = {}) {
   const requirements = {
     title: body.title,
     category: body.category,
@@ -56,10 +56,11 @@ export async function createRequest(user, body) {
     ...requirements,
     original: requirements,
     status: S.RECEIVED,
+    ...(inboundEmail ? { inboundEmail } : {}),
     history: [historyEntry(user, { type: 'created', to: S.RECEIVED, message: 'Request submitted' })]
   });
   logger.info({ requestId: String(request._id), requester: String(user._id) }, 'Resource request created');
-  if (process.env.NODE_ENV !== 'test') {
+  if (triggerAutomation && process.env.NODE_ENV !== 'test') {
     processResourceRequest(String(request._id)).catch(error => {
       logger.error({ requestId: String(request._id), error: error.message }, 'Resource request automation failed');
     });
