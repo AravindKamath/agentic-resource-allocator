@@ -11,10 +11,10 @@ const TITLES: Record<HistoryEntry['type'], string> = {
 };
 
 export const HistoryTimeline: React.FC<{ catalog: Catalog | null; history: HistoryEntry[] }> = ({ catalog, history }) => (
-  <ol className="relative border-l border-gray-200 ml-2 space-y-5">
+  <ol className="relative ml-2 space-y-5 border-l border-gray-200">
     {[...history].reverse().map(entry => (
       <li key={entry._id} className="ml-4">
-        <div className="absolute -left-1.5 mt-1.5 h-3 w-3 rounded-full border border-white bg-blue-500" />
+        <div className="absolute -left-1.5 mt-1.5 h-3 w-3 rounded-full border border-white bg-indigo-500 dark:border-slate-900" />
         <p className="text-sm font-medium text-gray-900">
           {TITLES[entry.type]}
           {entry.from && entry.to && entry.from !== entry.to && (

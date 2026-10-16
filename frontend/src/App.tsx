@@ -90,6 +90,7 @@ function App() {
             <Route path="admin/inventory/new" element={adminOnly(<AssetEditor />)} />
             <Route path="admin/inventory/:id" element={adminOnly(<AssetEditor />)} />
             <Route path="admin/assignments" element={adminOnly(<Assignments />)} />
+            <Route path="admin/history" element={adminOnly(<Assignments />)} />
 
             <Route path="tickets" element={<TicketsList />} />
             <Route 

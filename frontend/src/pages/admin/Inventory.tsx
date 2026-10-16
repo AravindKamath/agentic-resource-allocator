@@ -49,15 +49,19 @@ export const Inventory: React.FC = () => {
   }, [search]);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-900">Inventory</h1>
+        <div>
+          <p className="text-sm font-medium text-indigo-600">Capacity</p>
+          <h1 className="mt-1 text-2xl font-semibold tracking-tight text-gray-900">Inventory</h1>
+          <p className="mt-1 text-sm text-gray-500">Search systems by identity, category, and live availability.</p>
+        </div>
         <Link to="/admin/inventory/new"><Button><Plus className="mr-2 h-4 w-4" />Add asset</Button></Link>
       </div>
 
       <Card>
-        <CardContent className="p-4 flex flex-wrap items-end gap-3">
-          <div className="w-64"><Input id="inventory-search" placeholder="Asset ID, name, model, location" value={search} onChange={e => setSearch(e.target.value)} /></div>
+        <CardContent className="flex flex-wrap items-end gap-3 p-4">
+        <div className="w-full sm:w-72"><Input id="inventory-search" label="Search" placeholder="Asset ID, name, model, location" value={search} onChange={e => setSearch(e.target.value)} /></div>
           <select aria-label="Status" className={selectClass} value={status} onChange={e => update('status', e.target.value)}>
             <option value="">All statuses</option>
             {catalog?.assetStatuses.map(s => <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>)}

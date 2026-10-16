@@ -49,8 +49,12 @@ export const RequestQueue: React.FC = () => {
   }, [search]);
 
   return (
-    <div className="space-y-6">
-      <h1 className="text-2xl font-bold text-gray-900">Request Queue</h1>
+    <div className="space-y-8">
+      <div>
+        <p className="text-sm font-medium text-indigo-600">Exceptions</p>
+        <h1 className="mt-1 text-2xl font-semibold tracking-tight text-gray-900">Requests</h1>
+        <p className="mt-1 text-sm text-gray-500">Prioritize requests that need review, clarification, or allocation.</p>
+      </div>
 
       <Card>
         <CardContent className="p-4 flex flex-wrap items-end gap-3">

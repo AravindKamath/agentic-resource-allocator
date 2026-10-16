@@ -36,8 +36,12 @@ export const Assignments: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6">
-      <h1 className="text-2xl font-bold text-gray-900">Assignments</h1>
+    <div className="space-y-8">
+      <div>
+        <p className="text-sm font-medium text-indigo-600">Operations</p>
+        <h1 className="mt-1 text-2xl font-semibold tracking-tight text-gray-900">Assignments</h1>
+        <p className="mt-1 text-sm text-gray-500">Track active allocations, pending reservations, and released assets.</p>
+      </div>
       <Card>
         <CardContent className="p-4">
           <select aria-label="Status" className={selectClass} value={status} onChange={e => setFilter('status', e.target.value)}>

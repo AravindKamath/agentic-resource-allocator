@@ -15,7 +15,7 @@ export const LoadingCard: React.FC<{ lines?: number }> = ({ lines = 5 }) => (
 export const ErrorCard: React.FC<{ message: string; onRetry?: () => void }> = ({ message, onRetry }) => (
   <Card>
     <CardContent className="p-6 flex items-center justify-between gap-4">
-      <div className="flex items-center gap-2 text-red-700">
+      <div className="flex items-center gap-2 text-red-700 dark:text-red-300">
         <AlertCircle className="h-5 w-5" />
         <span>{message}</span>
       </div>
@@ -25,7 +25,7 @@ export const ErrorCard: React.FC<{ message: string; onRetry?: () => void }> = ({
 );
 
 export const EmptyState: React.FC<{ message: string; children?: React.ReactNode }> = ({ message, children }) => (
-  <div className="text-center py-12">
+  <div className="text-center py-12 text-gray-500">
     <p className="text-gray-500">{message}</p>
     {children && <div className="mt-4">{children}</div>}
   </div>
