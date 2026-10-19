@@ -1,0 +1,182 @@
+import { EmailMessage } from '../models/EmailMessage.js';
+import { EmailOutbox } from '../models/EmailOutbox.js';
+import { ResourceRequest } from '../models/ResourceRequest.js';
+import { User } from '../models/User.js';
+import { config } from '../config.js';
+import { createRequest, respondToClarification } from './resourceRequestService.js';
+import { processResourceRequest } from './resourceAutomationService.js';
+import { getRequestDetail } from './resourceRequestService.js';
+import * as gmail from './gmailClient.js';
+import { logger } from '../logger.js';
+
+const ADMIN_ESCALATION = 'admin';
+
+function normaliseBody(value) {
+  return value
+    .replace(/^>.*$/gm, '')
+    .replace(/(^|\n)--\s*\n[\s\S]*$/m, '$1')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
+function requestBody(message) {
+  const content = normaliseBody(message.body);
+  return {
+    title: message.subject || 'Email resource request',
+    category: 'other',
+    purpose: content.slice(0, 2000) || 'Resource request submitted by email',
+    description: content.slice(0, 5000) || 'No readable message body was provided.',
+    specifications: {},
+    quantity: 1,
+    urgency: 'normal',
+    neededBy: null
+  };
+}
+
+function resultText(request, result) {
+  if (result.status === 'allocated') {
+    const assignment = request.assignments?.find(item => item.status === 'active');
+    return `Your request ${request._id} was allocated automatically.\n\nAsset: ${assignment?.asset?.assetTag || 'assigned asset'}\nStatus: ${request.status}\n\nReply to this thread with request ID ${request._id} if you need help.`;
+  }
+  const reason = request.automation?.reason || 'The request needs administrator review.';
+  return `Your request ${request._id} needs follow-up.\n\nStatus: ${request.status}\nReason: ${reason}\n\nReply to this thread with the missing details, or include request ID ${request._id}.`;
+}
+
+async function enqueue({ request, to, subject, body, kind, threadId, inReplyTo }) {
+  return EmailOutbox.findOneAndUpdate(
+    { request: request._id, kind },
+    { $setOnInsert: { request: request._id, to, subject, body, kind, threadId: threadId || null, inReplyTo: inReplyTo || null } },
+    { upsert: true, new: true }
+  );
+}
+
+export async function sendPendingEmail(outbox) {
+  const locked = await EmailOutbox.findOneAndUpdate(
+    { _id: outbox._id, status: { $in: ['pending', 'failed'] } },
+    { $set: { status: 'sending' }, $inc: { attempts: 1 } },
+    { new: true }
+  );
+  if (!locked) return false;
+  try {
+    const sent = await gmail.sendMessage(locked);
+    await EmailOutbox.updateOne({ _id: locked._id }, { $set: { status: 'sent', sentAt: new Date() } });
+    await EmailMessage.create({
+      gmailMessageId: sent.id || `outbox-${locked._id}`,
+      threadId: sent.threadId || locked.threadId || 'unknown',
+      sender: config.gmail.userEmail,
+      subject: locked.subject,
+      request: locked.request,
+      direction: 'outbound',
+      status: 'completed'
+    });
+    return true;
+  } catch (error) {
+    await EmailOutbox.updateOne({ _id: locked._id }, { $set: { status: 'failed', lastError: error.message } });
+    logger.error({ outboxId: String(locked._id), error: error.message }, 'Gmail delivery failed');
+    return false;
+  }
+}
+
+export async function flushEmailOutbox() {
+  if (!config.gmail.enabled) return;
+  const pending = await EmailOutbox.find({ status: { $in: ['pending', 'failed'] }, attempts: { $lt: 5 } }).limit(20);
+  for (const item of pending) await sendPendingEmail(item);
+}
+
+async function processInbound(message) {
+  const existing = await EmailMessage.findOne({ gmailMessageId: message.id });
+  if (existing && ['completed', 'ignored'].includes(existing.status)) return existing.request;
+  let record = existing;
+  if (record?.status === 'processing') return record.request;
+  if (record?.status === 'failed') {
+    await EmailMessage.updateOne({ _id: record._id }, { $set: { status: 'processing', error: null } });
+  } else if (!record) {
+    try {
+      record = await EmailMessage.create({
+        gmailMessageId: message.id,
+        threadId: message.threadId,
+        sender: message.sender,
+        subject: message.subject,
+        direction: 'inbound',
+        status: 'processing',
+        receivedAt: message.receivedAt
+      });
+    } catch (error) {
+      if (error.code === 11000) return (await EmailMessage.findOne({ gmailMessageId: message.id }))?.request;
+      throw error;
+    }
+  }
+  try {
+    const user = await User.findOne({ email: message.sender }).lean();
+    if (!user) {
+      await EmailMessage.updateOne({ _id: record._id }, { $set: { status: 'ignored', error: 'Sender is not registered' } });
+      return null;
+    }
+    const prior = await EmailMessage.findOne({ threadId: message.threadId, request: { $ne: null } }).sort({ receivedAt: -1 });
+    let request;
+    if (prior) {
+      request = await ResourceRequest.findById(prior.request);
+      if (request && request.status === 'CLARIFICATION_REQUIRED') {
+        const updates = requestBody(message);
+        request = await respondToClarification(prior.request, user, {
+          message: message.body,
+          updates: { purpose: updates.purpose, description: updates.description }
+        });
+        await processResourceRequest(request._id);
+      }
+    } else {
+      request = await createRequest(user, requestBody(message), {
+        triggerAutomation: false,
+        inboundEmail: { messageId: message.id, threadId: message.threadId, sender: message.sender, subject: message.subject, receivedAt: message.receivedAt }
+      });
+      await processResourceRequest(request._id);
+    }
+    if (request) {
+      const detail = await getRequestDetail(request._id, user);
+      await EmailMessage.updateOne({ _id: record._id }, { $set: { request: request._id, status: 'completed', processedAt: new Date() } });
+      await enqueue({ request: detail, to: user.email, subject: `IT request received: ${request._id}`, body: `We received your IT resource request ${request._id} and are processing it.\n\nYou can reply to this thread with additional details.`, kind: 'acknowledgement', threadId: message.threadId, inReplyTo: message.messageId });
+      await enqueue({ request: detail, to: user.email, subject: `IT request ${request._id}: ${detail.status}`, body: resultText(detail, detail.automation?.status === 'allocated' ? { status: 'allocated' } : { status: 'escalated' }), kind: 'result', threadId: message.threadId, inReplyTo: message.messageId });
+      if (detail.automation?.status !== 'allocated' && config.gmail.adminEmail) {
+        await enqueue({ request: detail, to: config.gmail.adminEmail, subject: `IT request escalation ${request._id}`, body: `Request ${request._id} from ${user.email} requires review.\n\n${detail.automation?.reason || 'See the admin dashboard.'}`, kind: ADMIN_ESCALATION, threadId: message.threadId });
+      }
+    }
+    return request;
+  } catch (error) {
+    await EmailMessage.updateOne({ _id: record._id }, { $set: { status: 'failed', error: error.message } });
+    throw error;
+  }
+}
+
+export async function pollGmailOnce() {
+  if (!config.gmail.enabled) return { processed: 0 };
+  const messages = await gmail.listUnreadMessages();
+  let processed = 0;
+  for (const summary of messages) {
+    try {
+      const message = gmail.parseMessage(await gmail.getMessage(summary.id));
+      if (!message?.id || !message.threadId || !message.sender) {
+        logger.warn({ code: 'invalid_gmail_message', gmailMessageId: summary.id }, 'Skipping malformed Gmail message');
+        continue;
+      }
+      await processInbound(message);
+      processed += 1;
+    } catch (error) {
+      logger.warn({
+        code: error.code || 'gmail_message_processing_failed',
+        status: error.status,
+        gmailMessageId: summary.id
+      }, 'Gmail message processing failed');
+    }
+  }
+  await flushEmailOutbox();
+  return { processed };
+}
+
+export function startGmailPolling() {
+  if (!config.gmail.enabled) return () => {};
+  const run = () => pollGmailOnce().catch(error => logger.error({ error: error.message }, 'Gmail polling failed'));
+  const timer = setInterval(run, config.gmail.pollIntervalMs);
+  timer.unref?.();
+  run();
+  return () => clearInterval(timer);
+}

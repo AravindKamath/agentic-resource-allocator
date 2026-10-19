@@ -16,6 +16,7 @@ import { compactSpecs } from '../domain/specValidation.js';
 import { httpError } from '../utils/httpError.js';
 import { emitNotification } from './notificationService.js';
 import { logger } from '../logger.js';
+import { processResourceRequest } from './resourceAutomationService.js';
 
 const S = REQUEST_STATUS;
 
@@ -38,7 +39,7 @@ async function loadVisible(id, user) {
   return request;
 }
 
-export async function createRequest(user, body) {
+export async function createRequest(user, body, { triggerAutomation = true, inboundEmail } = {}) {
   const requirements = {
     title: body.title,
     category: body.category,
@@ -55,9 +56,15 @@ export async function createRequest(user, body) {
     ...requirements,
     original: requirements,
     status: S.RECEIVED,
+    ...(inboundEmail ? { inboundEmail } : {}),
     history: [historyEntry(user, { type: 'created', to: S.RECEIVED, message: 'Request submitted' })]
   });
   logger.info({ requestId: String(request._id), requester: String(user._id) }, 'Resource request created');
+  if (triggerAutomation && process.env.NODE_ENV !== 'test') {
+    processResourceRequest(String(request._id)).catch(error => {
+      logger.error({ requestId: String(request._id), error: error.message }, 'Resource request automation failed');
+    });
+  }
   return getRequestDetail(request._id, user);
 }
 
@@ -146,6 +153,11 @@ export async function updateRequestByRequester(id, user, rawUpdates) {
     { new: true, runValidators: true }
   );
   if (!doc) throw httpError(409, 'Request changed while you were editing it; reload and try again');
+  if (process.env.NODE_ENV !== 'test') {
+    processResourceRequest(id).catch(error => {
+      logger.error({ requestId: id, error: error.message }, 'Resource request reprocessing failed');
+    });
+  }
   return getRequestDetail(id, user);
 }
 
@@ -175,6 +187,11 @@ export async function respondToClarification(id, user, { message, updates: rawUp
   );
   if (!doc) throw httpError(409, 'Request changed concurrently; reload and try again');
   logger.info({ requestId: id }, 'Clarification response recorded');
+  if (process.env.NODE_ENV !== 'test') {
+    processResourceRequest(id).catch(error => {
+      logger.error({ requestId: id, error: error.message }, 'Resource request reprocessing failed');
+    });
+  }
   return getRequestDetail(id, user);
 }
 

@@ -19,6 +19,7 @@ import { assets } from './routes/assets.js';
 import { assignments } from './routes/assignments.js';
 import { catalog } from './routes/catalog.js';
 import { writeLimiter } from './middleware/rateLimit.js';
+import { gmailOAuth } from './routes/gmailOAuth.js';
 
 export function createApp() {
   const app = express();
@@ -32,6 +33,7 @@ export function createApp() {
 
   app.use('/api', health);
   app.use('/api/auth', auth);
+  app.use('/api/gmail', gmailOAuth);
   app.use('/api/kb', kb);
   app.use('/api/tickets', writeLimiter, tickets);
   app.use('/api/agent', agent);

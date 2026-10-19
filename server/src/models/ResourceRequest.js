@@ -78,10 +78,26 @@ const schema = new mongoose.Schema({
     requestedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     requestedAt: Date
   },
+  inboundEmail: {
+    messageId: { type: String, index: true },
+    threadId: { type: String, index: true },
+    sender: { type: String, trim: true },
+    subject: { type: String, maxlength: 998 },
+    receivedAt: Date
+  },
   closure: {
     reason: String,
     closedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     closedAt: Date
+  },
+
+  automation: {
+    status: { type: String, enum: ['not_processed', 'processing', 'allocated', 'escalated', 'failed'], default: 'not_processed' },
+    outcomeCode: { type: String, enum: ['NONE', 'MISSING_REQUIREMENTS', 'UNCLASSIFIED_REQUEST', 'INVALID_EXTRACTION', 'NO_COMPATIBLE_ASSET', 'INSUFFICIENT_QUANTITY', 'ALLOCATION_CONFLICT', 'EXTRACTION_UNAVAILABLE'] },
+    reason: { type: String, maxlength: 2000 },
+    sourceHash: { type: String, maxlength: 128 },
+    extraction: { type: mongoose.Schema.Types.Mixed, default: undefined },
+    processedAt: Date
   },
 
   history: { type: [historySchema], default: [] }
