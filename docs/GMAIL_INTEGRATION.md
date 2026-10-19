@@ -33,7 +33,7 @@ When enabled, the server starts a configurable polling loop after MongoDB connec
 3. Stores the Gmail message ID and thread ID before processing, so polling retries cannot create duplicate requests.
 4. Creates a normal `ResourceRequest` with the subject and readable body, then invokes the existing worker extraction, deterministic matching, and transactional allocation services.
 5. Stores acknowledgement/result/escalation messages in a durable outbox and retries failed delivery up to five attempts.
-6. Uses durable message IDs for deduplication; the readonly scope does not permit changing Gmail labels.
+6. Uses durable message IDs for deduplication; it does not call Gmail's label-modification endpoint, so the read-only scope is sufficient.
 
 Replies in a known clarification thread update the existing request rather than creating another request. A sender cannot perform administrator actions through email; escalation only notifies `ADMIN_EMAIL`, while allocation remains in the existing authorized service/dashboard.
 
@@ -77,3 +77,16 @@ Verify without exposing credentials:
 2. Confirm `server/.env` contains a non-empty `GMAIL_REFRESH_TOKEN` without printing its value, for example:
    `grep -q '^GMAIL_REFRESH_TOKEN=.' server/.env && echo "refresh token present"`
 3. Restart the server and keep `GMAIL_ENABLED=false` until you are ready to begin polling.
+
+## One-time connectivity diagnostic
+
+The diagnostic uses the configured refresh token to obtain a short-lived access token and calls Gmail's read-only `users.getProfile` endpoint. It does not send or modify mail, start polling, or change `GMAIL_ENABLED`. It prints only sanitized JSON:
+
+```bash
+cd server
+npm run diagnose:gmail
+```
+
+On success, the output includes `profileRequestSucceeded`, the authenticated mailbox address, whether it matches `GMAIL_USER_EMAIL`, and the current `enabled` flag. On failure, it includes only `stage`, a sanitized `code`, HTTP `status`, and (when Google provides them) bounded `message`, `reason`, `domain`, and provider `status` fields. A missing refresh token or an invalid refresh token is never printed.
+
+The command's result is environment-dependent and must be run locally for live verification; mocked automated tests do not prove mailbox connectivity.

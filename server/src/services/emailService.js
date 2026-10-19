@@ -152,10 +152,21 @@ export async function pollGmailOnce() {
   const messages = await gmail.listUnreadMessages();
   let processed = 0;
   for (const summary of messages) {
-    const message = gmail.parseMessage(await gmail.getMessage(summary.id));
-    await processInbound(message);
-    await gmail.markRead(message.id);
-    processed += 1;
+    try {
+      const message = gmail.parseMessage(await gmail.getMessage(summary.id));
+      if (!message?.id || !message.threadId || !message.sender) {
+        logger.warn({ code: 'invalid_gmail_message', gmailMessageId: summary.id }, 'Skipping malformed Gmail message');
+        continue;
+      }
+      await processInbound(message);
+      processed += 1;
+    } catch (error) {
+      logger.warn({
+        code: error.code || 'gmail_message_processing_failed',
+        status: error.status,
+        gmailMessageId: summary.id
+      }, 'Gmail message processing failed');
+    }
   }
   await flushEmailOutbox();
   return { processed };

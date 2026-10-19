@@ -10,7 +10,8 @@
     "test": "NODE_ENV=test NODE_OPTIONS=--experimental-vm-modules jest --runInBand",
     "set-role": "node src/scripts/set-role.js",
     "seed:inventory": "node src/scripts/seed-inventory.js",
-    "seed:demo-inventory": "node src/scripts/seed-demo-inventory.js"
+    "seed:demo-inventory": "node src/scripts/seed-demo-inventory.js",
+    "diagnose:gmail": "node src/scripts/diagnose-gmail.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
