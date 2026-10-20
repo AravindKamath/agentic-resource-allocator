@@ -8,6 +8,7 @@ import { Input } from '../components/ui/Input';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
 import { LoadingSkeleton } from '../components/ui/LoadingSkeleton';
 import toast from 'react-hot-toast';
+import { isAxiosError } from 'axios';
 
 const configSchema = z.object({
   autoCloseEnabled: z.boolean(),
@@ -36,7 +37,7 @@ export const Settings: React.FC = () => {
     const loadConfig = async () => {
       try {
         await fetchConfig();
-      } catch (error) {
+      } catch {
         toast.error('Failed to load settings');
       }
     };
@@ -53,8 +54,11 @@ export const Settings: React.FC = () => {
     try {
       await updateConfig(data);
       toast.success('Settings updated successfully!');
-    } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Failed to update settings');
+    } catch (error: unknown) {
+      const message = isAxiosError(error) && typeof error.response?.data?.message === 'string'
+        ? error.response.data.message
+        : 'Failed to update settings';
+      toast.error(message);
     }
   };
 
@@ -82,7 +86,7 @@ export const Settings: React.FC = () => {
         <CardContent>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
             <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-700">
+              <label htmlFor="confidence-threshold" className="text-sm font-semibold text-[var(--text)]">
                 Auto-Close Settings
               </label>
               <div className="flex items-center space-x-2">
@@ -107,7 +111,10 @@ export const Settings: React.FC = () => {
                 max="1"
                 step="0.01"
                 {...register('confidenceThreshold', { valueAsNumber: true })}
-                className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider"
+                id="confidence-threshold"
+                aria-label="Confidence threshold"
+                style={{ '--slider-progress': `${Math.round((confidenceThreshold || 0) * 100)}%` } as React.CSSProperties}
+                className="confidence-slider w-full cursor-pointer appearance-none rounded-lg"
               />
               <p className="text-xs text-gray-500">
                 Minimum confidence level required for AI actions

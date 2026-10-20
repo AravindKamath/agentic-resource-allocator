@@ -11,12 +11,12 @@ export const LoadingSkeleton: React.FC<LoadingSkeletonProps> = ({
   lines = 1 
 }) => {
   return (
-    <div className="animate-pulse space-y-2">
+    <div className="animate-pulse space-y-2" aria-hidden="true">
       {Array.from({ length: lines }).map((_, i) => (
         <div
           key={i}
           className={cn(
-            'h-4 bg-gray-200 rounded',
+            'skeleton-bar h-4 rounded',
             i === lines - 1 && lines > 1 && 'w-3/4',
             className
           )}
