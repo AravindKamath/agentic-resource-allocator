@@ -199,7 +199,14 @@ export const RequestDetail: React.FC = () => {
               <Field label="Urgency">{urgencyLabel(catalog, requirements.urgency)}</Field>
               <Field label="Needed by">{formatDay(requirements.neededBy)}</Field>
               <div className="sm:col-span-2"><Field label="Purpose">{requirements.purpose}</Field></div>
-              <div className="sm:col-span-2"><Field label="Description">{requirements.description}</Field></div>
+              <div className="sm:col-span-2">
+                <details className="group rounded-xl border border-[var(--border)] bg-[var(--surface-muted)]/50 p-3">
+                  <summary className="cursor-pointer list-none text-sm font-semibold text-[var(--text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)] [&::-webkit-details-marker]:hidden">
+                    <span className="flex items-center justify-between">View description <span className="text-xs text-[var(--text-muted)] transition-transform group-open:rotate-180">⌄</span></span>
+                  </summary>
+                  <p className="mt-3 whitespace-pre-wrap border-t border-[var(--border)] pt-3 text-sm text-[var(--text-muted)]">{requirements.description}</p>
+                </details>
+              </div>
               <div className="sm:col-span-2">
                 <dt className="text-xs font-medium uppercase tracking-wide text-gray-500 mb-2">Specifications</dt>
                 <SpecList catalog={catalog} specs={requirements.specifications} />

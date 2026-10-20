@@ -1,33 +1,30 @@
 import React from 'react';
 import { Outlet, Link, useLocation, Navigate } from 'react-router-dom';
 import { useAuthStore } from '../stores/auth';
-import { 
-  LogOut,
-  User,
-  BarChart3,
-  Inbox,
-  Server,
-  Link2,
-  History,
-  Sun,
-  Moon
+import {
+  LogOut, User, BarChart3, Inbox, Server, Link2, History, Sun, Moon,
+  Menu, PanelLeftClose, PanelLeftOpen, X, Settings, LifeBuoy,
 } from 'lucide-react';
-import { Button } from './ui/Button';
 import { NotificationBell } from './ui/NotificationBell';
+import { BrandMark } from './BrandMark';
 
 export const Layout: React.FC = () => {
   const { user, logout } = useAuthStore();
   const location = useLocation();
   const [dark, setDark] = React.useState(() => localStorage.getItem('theme') === 'dark');
+  const [collapsed, setCollapsed] = React.useState(() => localStorage.getItem('sidebar') === 'collapsed');
+  const [mobileOpen, setMobileOpen] = React.useState(false);
 
   React.useEffect(() => {
     document.documentElement.classList.toggle('dark', dark);
     localStorage.setItem('theme', dark ? 'dark' : 'light');
   }, [dark]);
+  React.useEffect(() => {
+    localStorage.setItem('sidebar', collapsed ? 'collapsed' : 'expanded');
+  }, [collapsed]);
+  React.useEffect(() => setMobileOpen(false), [location.pathname]);
 
-  if (!user) {
-    return <Navigate to="/login" />;
-  }
+  if (!user) return <Navigate to="/login" />;
 
   const isAdmin = user.role === 'admin';
   const navigation = [
@@ -35,126 +32,65 @@ export const Layout: React.FC = () => {
     { name: 'Inventory', href: '/admin/inventory', icon: Server, show: isAdmin },
     { name: 'Assignments', href: '/admin/assignments', icon: Link2, show: isAdmin },
     { name: 'History', href: '/admin/history', icon: History, show: isAdmin },
-    {
-      name: 'My Requests',
-      href: '/requests',
-      icon: Inbox,
-      show: !isAdmin,
-    },
-    {
-      name: 'Support Tickets',
-      href: '/tickets',
-      icon: Inbox,
-      show: !isAdmin,
-    },
-    {
-      name: 'Agent Dashboard',
-      href: '/agent-dashboard',
-      icon: BarChart3,
-      show: user.role === 'agent',
-    },
-  ];
+    { name: 'My Requests', href: '/requests', icon: Inbox, show: !isAdmin },
+    { name: 'Support Tickets', href: '/tickets', icon: LifeBuoy, show: !isAdmin },
+    { name: 'Agent Dashboard', href: '/agent-dashboard', icon: BarChart3, show: user.role === 'agent' },
+    { name: 'Settings', href: '/settings', icon: Settings, show: isAdmin },
+  ].filter(item => item.show);
+
+  const isActive = (href: string) => location.pathname === href || location.pathname.startsWith(`${href}/`);
+
+  const sidebar = (
+    <aside className={`fixed inset-y-0 left-0 z-50 flex w-[248px] flex-col border-r border-[var(--border)] bg-[var(--surface)] transition-transform duration-200 md:translate-x-0 ${collapsed ? 'md:w-[72px]' : ''} ${mobileOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+      <div className={`flex h-[76px] shrink-0 items-center border-b border-[var(--border)] ${collapsed ? 'justify-center px-3' : 'px-5'}`}>
+        <BrandMark collapsed={collapsed} />
+        {mobileOpen && <button aria-label="Close navigation" className="ml-auto rounded-lg p-2 text-[var(--text-muted)] hover:bg-[var(--surface-muted)] md:hidden" onClick={() => setMobileOpen(false)}><X className="h-5 w-5" /></button>}
+      </div>
+      <nav className="flex-1 overflow-y-auto px-3 py-6" aria-label="Primary navigation">
+        {!collapsed && <p className="px-3 pb-3 text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--text-muted)]">Workspace</p>}
+        <ul className="space-y-1.5">
+          {navigation.map(item => {
+            const active = isActive(item.href);
+            return <li key={item.name}>
+              <Link to={item.href} title={collapsed ? item.name : undefined} aria-label={item.name}
+                className={`group flex items-center rounded-xl py-2.5 text-sm font-semibold transition-colors ${collapsed ? 'justify-center px-2' : 'gap-3 px-3'} ${active ? 'bg-[color-mix(in_srgb,var(--primary)_12%,transparent)] text-[var(--primary-strong)]' : 'text-[var(--text-muted)] hover:bg-[var(--surface-muted)] hover:text-[var(--text)]'}`}>
+                <item.icon className={`h-[18px] w-[18px] shrink-0 ${active ? 'text-[var(--primary)]' : ''}`} />{!collapsed && item.name}
+              </Link>
+            </li>;
+          })}
+        </ul>
+      </nav>
+      <div className={`border-t border-[var(--border)] p-3 ${collapsed ? 'flex flex-col items-center gap-3' : ''}`}>
+        <div className={`flex items-center gap-3 rounded-xl bg-[var(--surface-muted)] p-2.5 ${collapsed ? 'justify-center' : ''}`} title={collapsed ? user.email : undefined}>
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[var(--primary)] text-xs font-bold text-white">{(user.name || user.email || 'U').slice(0, 1).toUpperCase()}</div>
+          {!collapsed && <div className="min-w-0"><p className="truncate text-xs font-semibold text-[var(--text)]">{user.name || user.email}</p><p className="truncate text-[11px] capitalize text-[var(--text-muted)]">{user.role}{user.department ? ` · ${user.department}` : ''}</p></div>}
+        </div>
+        <button type="button" onClick={logout} title="Sign out" className={`mt-2 flex items-center rounded-lg p-2 text-xs font-semibold text-[var(--text-muted)] hover:bg-red-50 hover:text-[var(--danger)] dark:hover:bg-red-400/10 ${collapsed ? '' : 'w-full gap-2 px-3'}`}><LogOut className="h-4 w-4" />{!collapsed && 'Sign out'}</button>
+      </div>
+    </aside>
+  );
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Sidebar */}
-      <aside className="fixed inset-y-0 left-0 z-50 hidden w-64 border-r border-gray-200 bg-white md:block">
-        <div className="flex h-16 items-center border-b border-gray-200 px-6">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-wider text-indigo-600">Operations</p>
-            <h1 className="text-lg font-semibold text-gray-900">IT Resource Desk</h1>
+    <div className="min-h-screen bg-[var(--page)]">
+      {sidebar}
+      {mobileOpen && <button aria-label="Close navigation overlay" className="fixed inset-0 z-40 bg-black/40 md:hidden" onClick={() => setMobileOpen(false)} />}
+      <div className={`min-h-screen transition-[padding] duration-200 md:pl-[248px] ${collapsed ? 'md:pl-[72px]' : ''}`}>
+        <header className="sticky top-0 z-30 flex h-[76px] items-center justify-between border-b border-[var(--border)] bg-[var(--surface)] px-4 backdrop-blur-xl md:px-8">
+          <div className="flex items-center gap-3">
+            <button aria-label="Open navigation" className="rounded-xl p-2 text-[var(--text-muted)] hover:bg-[var(--surface-muted)] md:hidden" onClick={() => setMobileOpen(true)}><Menu className="h-5 w-5" /></button>
+            <button aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'} className="hidden rounded-xl p-2 text-[var(--text-muted)] hover:bg-[var(--surface-muted)] md:block" onClick={() => setCollapsed(value => !value)}>
+              {collapsed ? <PanelLeftOpen className="h-5 w-5" /> : <PanelLeftClose className="h-5 w-5" />}
+            </button>
+            <div className="hidden md:block"><p className="text-sm font-bold text-[var(--text)]">{isAdmin ? 'Admin operations' : 'Service desk'}</p><p className="text-xs text-[var(--text-muted)]">Manage resources with confidence</p></div>
           </div>
-        </div>
-        
-        <nav className="mt-6 px-3" aria-label="Primary navigation">
-          <p className="px-3 pb-2 text-xs font-semibold uppercase tracking-wider text-gray-500">Workspace</p>
-          <ul className="space-y-1">
-            {navigation
-              .filter(item => item.show)
-              .map((item) => {
-                const isActive = 'exact' in item && item.exact
-                  ? location.pathname === item.href
-                  : location.pathname === item.href || location.pathname.startsWith(`${item.href}/`);
-                return (
-                  <li key={item.name}>
-                    <Link
-                      to={item.href}
-                      className={`flex items-center px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
-                        isActive
-                          ? 'bg-indigo-50 text-indigo-700'
-                          : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-                      }`}
-                    >
-                      <item.icon className="mr-3 h-5 w-5" />
-                      {item.name}
-                    </Link>
-                  </li>
-                );
-              })}
-          </ul>
-        </nav>
-
-        <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-gray-200">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-2">
-              <User className="h-5 w-5 text-gray-400" />
-              <div>
-                <p className="text-sm font-medium text-gray-900">{user.email}</p>
-                <p className="text-xs text-gray-500 capitalize">{user.role}{user.department ? ` · ${user.department}` : ''}</p>
-              </div>
-            </div>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={logout}
-              className="ml-2"
-            >
-              <LogOut className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
-      </aside>
-
-      {/* Main content */}
-      <div className="md:pl-64">
-        {/* Top header with notifications */}
-        <header className="sticky top-0 z-40 border-b border-gray-200 bg-[var(--surface)] px-4 py-3 backdrop-blur md:px-8">
-          <div className="flex items-center justify-between">
-            <div className="md:hidden">
-              <p className="text-sm font-semibold text-gray-900">IT Resource Desk</p>
-              <p className="text-xs text-gray-500">{isAdmin ? 'Admin operations' : 'Service desk'}</p>
-            </div>
-            <div className="ml-auto flex items-center gap-2">
-              <button
-                type="button"
-                aria-label={dark ? 'Switch to light mode' : 'Switch to dark mode'}
-                onClick={() => setDark(value => !value)}
-                className="rounded-lg p-2 text-gray-500 hover:bg-gray-100 hover:text-gray-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
-              >
-                {dark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-              </button>
+          <div className="flex items-center gap-1">
+            <button type="button" aria-label={dark ? 'Switch to light mode' : 'Switch to dark mode'} onClick={() => setDark(value => !value)} className="rounded-xl p-2.5 text-[var(--text-muted)] hover:bg-[var(--surface-muted)] hover:text-[var(--text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]">{dark ? <Sun className="h-[18px] w-[18px]" /> : <Moon className="h-[18px] w-[18px]" />}</button>
             {user.role !== 'admin' && <NotificationBell />}
-            </div>
+            <div className="ml-2 hidden h-8 w-px bg-[var(--border)] sm:block" />
+            <div className="ml-2 hidden items-center gap-2 sm:flex"><div className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--surface-muted)] text-xs font-bold text-[var(--primary)]"><User className="h-4 w-4" /></div></div>
           </div>
         </header>
-        <nav className="flex gap-1 overflow-x-auto border-b border-gray-200 bg-[var(--surface)] px-4 py-2 md:hidden" aria-label="Mobile navigation">
-          {navigation.filter(item => item.show).map(item => {
-            const active = location.pathname === item.href || location.pathname.startsWith(`${item.href}/`);
-            return (
-              <Link
-                key={item.name}
-                to={item.href}
-                className={`whitespace-nowrap rounded-md px-3 py-2 text-sm font-medium ${active ? 'bg-indigo-50 text-indigo-700' : 'text-gray-600'}`}
-              >
-                {item.name}
-              </Link>
-            );
-          })}
-        </nav>
-        
-        <main className="mx-auto max-w-[1600px] p-4 md:p-8">
-          <Outlet />
-        </main>
+        <main className="mx-auto w-full max-w-[1600px] p-4 md:p-8"><Outlet /></main>
       </div>
     </div>
   );
