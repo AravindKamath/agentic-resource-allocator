@@ -7,7 +7,7 @@ const AUTHORIZATION_ENDPOINT = 'https://accounts.google.com/o/oauth2/v2/auth';
 const TOKEN_ENDPOINT = 'https://oauth2.googleapis.com/token';
 const USERINFO_ENDPOINT = 'https://www.googleapis.com/oauth2/v2/userinfo';
 export const GMAIL_OAUTH_SCOPES = [
-  'https://www.googleapis.com/auth/gmail.readonly',
+  'https://www.googleapis.com/auth/gmail.modify',
   'https://www.googleapis.com/auth/gmail.send'
 ];
 const STATE_TTL_MS = 10 * 60 * 1000;

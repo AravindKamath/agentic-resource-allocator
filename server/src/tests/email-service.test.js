@@ -42,7 +42,7 @@ describe('Gmail resource request ingestion', () => {
 
     expect(await ResourceRequest.countDocuments()).toBe(1);
     expect(await EmailMessage.countDocuments({ direction: 'inbound' })).toBe(1);
-    expect(gmail.markRead).not.toHaveBeenCalled();
+    expect(gmail.markRead).toHaveBeenCalledTimes(2);
   });
 
   test('ignores an unregistered sender without creating a request', async () => {
@@ -59,7 +59,7 @@ describe('Gmail resource request ingestion', () => {
 
     expect(await ResourceRequest.countDocuments()).toBe(0);
     expect(await EmailMessage.countDocuments({ status: 'ignored' })).toBe(1);
-    expect(gmail.markRead).not.toHaveBeenCalled();
+    expect(gmail.markRead).toHaveBeenCalledTimes(1);
   });
 
   test('deduplicates concurrent delivery of the same Gmail message', async () => {

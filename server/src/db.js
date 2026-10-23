@@ -3,5 +3,5 @@ import { config } from './config.js';
 
 export async function connectDb() {
   mongoose.set('strictQuery', true);
-  await mongoose.connect(config.mongoUri, { autoIndex: true });
+  await mongoose.connect(config.mongoUri, { autoIndex: config.env !== 'production' });
 }

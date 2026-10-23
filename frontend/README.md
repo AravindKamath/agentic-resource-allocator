@@ -68,9 +68,9 @@ src/
    npm run dev
    ```
 
-4. **Run tests**:
+4. **Run the production build**:
    ```bash
-   npm run test
+   npm run build
    ```
 
 ## User Roles & Permissions

@@ -22,7 +22,6 @@ import { Inventory } from './pages/admin/Inventory';
 import { AssetEditor } from './pages/admin/AssetEditor';
 import { Assignments } from './pages/admin/Assignments';
 import { useAuthStore } from './stores/auth';
-import './utils/apiTest'; // Import the test function to make it available on window
 
 // Landing page depends on role: administrators manage, everyone else requests.
 function HomeRedirect() {

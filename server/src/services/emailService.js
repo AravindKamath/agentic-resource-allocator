@@ -147,7 +147,9 @@ async function processInbound(message) {
   }
 }
 
-export async function pollGmailOnce() {
+let pollInFlight = null;
+
+async function pollGmailOnceInternal() {
   if (!config.gmail.enabled) return { processed: 0 };
   const messages = await gmail.listUnreadMessages();
   let processed = 0;
@@ -159,6 +161,11 @@ export async function pollGmailOnce() {
         continue;
       }
       await processInbound(message);
+      try {
+        await gmail.markRead(message.id);
+      } catch (error) {
+        logger.warn({ gmailMessageId: message.id, error: error.message }, 'Gmail message processed but could not be marked read');
+      }
       processed += 1;
     } catch (error) {
       logger.warn({
@@ -172,11 +179,31 @@ export async function pollGmailOnce() {
   return { processed };
 }
 
+export function pollGmailOnce() {
+  if (!pollInFlight) {
+    pollInFlight = pollGmailOnceInternal().finally(() => {
+      pollInFlight = null;
+    });
+  }
+  return pollInFlight;
+}
+
 export function startGmailPolling() {
   if (!config.gmail.enabled) return () => {};
-  const run = () => pollGmailOnce().catch(error => logger.error({ error: error.message }, 'Gmail polling failed'));
-  const timer = setInterval(run, config.gmail.pollIntervalMs);
+  let stopped = false;
+  let timer;
+  const run = () => {
+    if (stopped) return Promise.resolve();
+    return pollGmailOnce().catch(error => {
+      logger.error({ error: error.message }, 'Gmail polling failed');
+    });
+  };
+  timer = setInterval(run, config.gmail.pollIntervalMs);
   timer.unref?.();
   run();
-  return () => clearInterval(timer);
+  return async () => {
+    stopped = true;
+    clearInterval(timer);
+    if (pollInFlight) await pollInFlight;
+  };
 }
