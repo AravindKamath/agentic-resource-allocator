@@ -169,6 +169,13 @@ Local names and defaults are also listed in
 [frontend/.env.example](../frontend/.env.example), and
 [agent/.env.example](../agent/.env.example).
 
+For branded emails, set `ORGANIZATION_LOGO_URL` on the deployed API to the
+public HTTPS URL served by the deployed frontend, for example
+`https://agentic-resource-allocator.vercel.app/logo.svg` after that Vercel
+deployment has been published and verified. The frontend source uses the
+Vite public asset path `/logo.svg`; do not use a GitHub raw URL. If the URL is
+unset or is not HTTPS, emails use the text-only organization header.
+
 ## Gmail OAuth and polling
 
 The OAuth flow uses Gmail `modify` and `send` access through
