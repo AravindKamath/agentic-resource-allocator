@@ -79,7 +79,12 @@ export function describeRequirements(request) {
   const warnings = [];
   const categoryDef = RESOURCE_CATEGORIES.find(c => c.key === request.category);
 
-  requirements.push({ field: 'category', label: 'Category', kind: 'exact', value: request.category, display: categoryDef?.label ?? request.category });
+  if (categoryDef && request.category !== 'other') {
+    requirements.push({ field: 'category', label: 'Category', kind: 'exact', value: request.category, display: categoryDef.label });
+  } else {
+    warnings.push({ code: 'CATEGORY_NOT_RESTRICTIVE', severity: 'info',
+      message: 'The request category is Other or unspecified, so inventory is evaluated by the stated hardware requirements instead of category.' });
+  }
 
   for (const field of NUMERIC_MINIMUMS) {
     if (present(specs[field])) {
@@ -119,11 +124,6 @@ export function describeRequirements(request) {
         message: `Not specified by the requester (not checked): ${unspecified.map(label).join(', ')}.` });
     }
   }
-  if (request.category === 'other') {
-    warnings.push({ code: 'CATEGORY_OTHER', severity: 'warning',
-      message: '"Other" is a catch-all category; only assets also categorised as Other are considered. Check the description carefully.' });
-  }
-
   return { requirements, warnings };
 }
 
@@ -158,10 +158,13 @@ export function evaluateAsset(request, asset) {
   const comparisons = [];
   const add = (c) => comparisons.push(c);
 
-  // Category
-  add(asset.category === request.category
-    ? { field: 'category', label: 'Category', required: request.category, actual: asset.category, result: 'meets', message: 'Matching category' }
-    : { field: 'category', label: 'Category', required: request.category, actual: asset.category, result: 'fails', message: `Category is ${asset.category}, request needs ${request.category}` });
+  // "Other" (and legacy missing/unknown categories) is intentionally
+  // non-restrictive. Hardware requirements remain hard constraints.
+  if (RESOURCE_CATEGORIES.some(c => c.key === request.category) && request.category !== 'other') {
+    add(asset.category === request.category
+      ? { field: 'category', label: 'Category', required: request.category, actual: asset.category, result: 'meets', message: 'Matching category' }
+      : { field: 'category', label: 'Category', required: request.category, actual: asset.category, result: 'fails', message: `Category is ${asset.category}, request needs ${request.category}` });
+  }
 
   // Numeric minimums
   const fitRatios = [];

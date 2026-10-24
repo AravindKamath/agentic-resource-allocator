@@ -94,6 +94,21 @@ describe('results', () => {
     expect(tags(r.body.candidates.eligible)).toContain('STO-ANY');
   });
 
+  test('Other requests evaluate compatible assets across categories', async () => {
+    const req = await createApprovedRequest(t.user, t.admin, {
+      category: 'other',
+      title: 'Compute box from email',
+      specifications: { memoryGb: 32, cpuCores: 8 }
+    });
+    await createAsset(t.admin, { assetTag: 'OTHER-COMPAT', category: 'workstation', specs: { memoryGb: 64, cpuCores: 16 } });
+    await createAsset(t.admin, { assetTag: 'OTHER-SMALL', category: 'standard_computer', specs: { memoryGb: 8, cpuCores: 4 } });
+
+    const r = await matches(t.admin, req._id);
+    expect(tags(r.body.candidates.eligible)).toContain('OTHER-COMPAT');
+    expect(tags(r.body.candidates.incompatible)).toContain('OTHER-SMALL');
+    expect(r.body.requirements.map(item => item.field)).not.toContain('category');
+  });
+
   test('matching never creates assignments, reserves assets or changes the request', async () => {
     const req = await createApprovedRequest(t.user, t.admin, { ...SERVER_REQ, title: 'Side-effect check' });
     const a = await createAsset(t.admin, serverAsset('SRV-SIDE'));

@@ -14,6 +14,7 @@ import { evaluateAsset, ELIGIBILITY } from '../domain/matching.js';
 import { httpError } from '../utils/httpError.js';
 import { notifyRequester } from './resourceRequestService.js';
 import { logger } from '../logger.js';
+import { queueLifecycleEmail } from './emailNotificationService.js';
 
 /*
  * Consistency strategy
@@ -141,6 +142,14 @@ export async function assignAsset({ requestId, assetId, actor, mode = 'assign', 
   notifyRequester(result.request, proposing
     ? `An asset has been reserved for your request "${result.request.title}".`
     : `Asset ${result.asset.assetTag} has been assigned to your request "${result.request.title}".`, actor);
+  if (!proposing) {
+    queueLifecycleEmail({
+      request: result.request,
+      asset: result.asset,
+      kind: 'assignment',
+      eventKey: `assignment:${result.assignment._id}`
+    });
+  }
   return result;
 }
 

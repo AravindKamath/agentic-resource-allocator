@@ -61,11 +61,13 @@ export async function getMatches(requestId) {
       message: 'All requested assets are already assigned or reserved.' });
   }
 
-  // Same-category assets are evaluated in full; other categories fail the
-  // category requirement by definition and are only counted.
+  const categoryRestricted = request.category && request.category !== 'other';
   const [assets, otherCategoryAvailable] = await Promise.all([
-    Asset.find({ category: request.category, status: { $ne: ASSET_STATUS.RETIRED } }).select(ASSET_FIELDS).lean(),
-    Asset.countDocuments({ category: { $ne: request.category }, status: ASSET_STATUS.AVAILABLE })
+    Asset.find({
+      ...(categoryRestricted ? { category: request.category } : {}),
+      status: { $ne: ASSET_STATUS.RETIRED }
+    }).select(ASSET_FIELDS).lean(),
+    categoryRestricted ? Asset.countDocuments({ category: { $ne: request.category }, status: ASSET_STATUS.AVAILABLE }) : 0
   ]);
 
   const groups = { eligible: [], needsVerification: [], incompatible: [], unavailable: [] };

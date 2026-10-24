@@ -90,7 +90,10 @@ class LLMProvider:
     def _stub_resource_extraction(self, request: Dict[str, Any], source: str) -> Dict[str, Any]:
         text = source.lower()
         category = request.get("category")
-        if not category:
+        # Email intake starts as "other" because no structured category is
+        # available. Infer a supported category when the request text supports
+        # it; retain "other" only when it genuinely cannot be classified.
+        if not category or category == "other":
             if "server" in text:
                 category = "server"
             elif any(word in text for word in ("gpu", "machine learning", "ml workstation")):

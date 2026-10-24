@@ -54,6 +54,14 @@ describe('hard constraints', () => {
     expect(r.failures[0]).toMatch(/Category is server/);
   });
 
+  test('Other category evaluates inventory by hardware requirements', () => {
+    const request = req({ memoryGb: 16 }, { category: 'other' });
+    const matching = evaluateAsset(request, asset({ memoryGb: 16 }, { category: 'workstation' }));
+    expect(matching.eligibility).toBe('compatible');
+    expect(matching.comparisons.some(c => c.field === 'category')).toBe(false);
+    expect(describeRequirements(request).warnings.map(w => w.code)).toContain('CATEGORY_NOT_RESTRICTIVE');
+  });
+
   test('storage type is a minimum tier and form factor is exact unless "any"', () => {
     expect(evaluateAsset(req({ storageType: 'ssd' }), asset({ storageType: 'nvme' })).eligibility).toBe('compatible');
     expect(evaluateAsset(req({ storageType: 'ssd' }), asset({ storageType: 'hdd' })).eligibility).toBe('incompatible');
