@@ -46,6 +46,18 @@ class LLMProvider:
         quantity = result.get("quantity") or request.get("quantity", 1)
         missing = list(dict.fromkeys(str(v) for v in result.get("missingFields", [])))
         ambiguities = list(dict.fromkeys(str(v) for v in result.get("ambiguities", [])))
+        numeric_fields = {"cpuCores", "memoryGb", "storageGb", "gpuCount", "gpuMemoryGb", "networkPorts", "networkSpeedGbps"}
+        for field in list(specifications):
+            if field not in numeric_fields:
+                continue
+            try:
+                value = float(specifications[field])
+                if value <= 0:
+                    raise ValueError
+                specifications[field] = int(value) if field in {"cpuCores", "gpuCount", "networkPorts"} else value
+            except (TypeError, ValueError):
+                specifications.pop(field)
+                ambiguities.append(field)
         if category not in self.RESOURCE_CATEGORIES:
             return {
                 "extractionStatus": "UNSUPPORTED",
@@ -88,7 +100,7 @@ class LLMProvider:
         }
 
     def _stub_resource_extraction(self, request: Dict[str, Any], source: str) -> Dict[str, Any]:
-        text = source.lower()
+        text = self._normalise_requirement_text(source)
         category = request.get("category")
         # Email intake starts as "other" because no structured category is
         # available. Infer a supported category when the request text supports
@@ -105,21 +117,7 @@ class LLMProvider:
             elif any(word in text for word in ("computer", "laptop", "workstation", "desktop")):
                 category = "standard_computer"
         specs = dict(request.get("specifications") or {})
-        patterns = {
-            "cpuCores": r"(?:at least|minimum|with)?\s*(\d+)\s*(?:cpu\s*)?cores?",
-            "memoryGb": r"(\d+)\s*(?:gb|gib)\s*(?:ram|memory)",
-            "storageGb": r"(\d+)\s*(?:gb|tb)\s*(?:storage|disk)",
-            "gpuMemoryGb": r"(\d+)\s*(?:gb|gib)\s*(?:gpu|vram)",
-            "gpuCount": r"(\d+)\s*gpus?",
-            "networkPorts": r"(\d+)[-\s]?port",
-        }
-        for field, pattern in patterns.items():
-            match = re.search(pattern, text)
-            if match and field not in specs:
-                value = int(match.group(1))
-                if field == "storageGb" and ("tb" in match.group(0)):
-                    value *= 1024
-                specs[field] = value
+        specs.update({field: value for field, value in self._extract_labelled_specs(text).items() if field not in specs})
         if "nvme" in text:
             specs.setdefault("storageType", "nvme")
         elif "ssd" in text:
@@ -144,6 +142,79 @@ class LLMProvider:
             "missingFields": missing,
             "confidence": 0.9 if not missing else 0.45
         }, request)
+
+    @staticmethod
+    def _normalise_requirement_text(source: str) -> str:
+        """Convert common email/table markup into field-oriented plain text."""
+        text = re.sub(r"(?is)<br\s*/?>", "\n", source)
+        text = re.sub(r"(?is)</td\s*>", " | ", text)
+        text = re.sub(r"(?is)</(?:p|div|tr|h[1-6]|li|table)>", "\n", text)
+        text = re.sub(r"(?is)<[^>]+>", " ", text)
+        text = text.replace("&nbsp;", " ").replace("&gt;", ">").replace("&lt;", "<")
+        lines = []
+        for raw_line in text.replace("\r", "\n").splitlines():
+            line = re.sub(r"\s+", " ", raw_line).strip(" |-*")
+            if not line:
+                continue
+            cells = [re.sub(r"\s+", " ", cell).strip() for cell in line.split("|") if cell.strip()]
+            lines.append(": ".join(cells) if len(cells) >= 2 else line)
+        return "\n".join(lines).lower()
+
+    @staticmethod
+    def _unit_to_gb(value: str, unit: str) -> float:
+        amount = float(value)
+        unit = unit.lower()
+        if unit in {"tb", "tib"}:
+            return amount * 1024
+        if unit in {"mb", "mib"}:
+            return amount / 1024
+        return amount
+
+    @classmethod
+    def _extract_labelled_specs(cls, text: str) -> Dict[str, Any]:
+        """Extract values only from their labelled requirement line."""
+        number = r"(\d+(?:\.\d+)?)\s*(gb|gib|tb|tib|mb|mib)?"
+        specs: Dict[str, Any] = {}
+
+        def labelled(pattern: str) -> str:
+            match = re.search(pattern, text, re.IGNORECASE)
+            return match.group(0) if match else ""
+
+        cpu = labelled(r"(?:cpu|processor)(?:\s+cores?)?\s*[:=]\s*(?:at\s+least\s+|minimum\s+|>=\s*)?(\d+)\s*cores?")
+        if cpu:
+            specs["cpuCores"] = int(re.search(r"\d+", cpu).group(0))
+
+        memory = labelled(r"(?:system\s+)?(?:ram|memory)(?:\s+memory)?\s*[:=]\s*(?:at\s+least\s+|minimum\s+|>=\s*)?" + number)
+        if memory:
+            match = re.search(number, memory, re.IGNORECASE)
+            if match:
+                specs["memoryGb"] = round(cls._unit_to_gb(match.group(1), match.group(2) or "gb"), 4)
+
+        storage = labelled(r"(?:storage|disk)(?:\s+capacity)?\s*[:=]\s*(?:at\s+least\s+|minimum\s+|>=\s*)?" + number + r"(?:\s*(ssd|nvme|hdd))?")
+        if storage:
+            match = re.search(number + r"(?:\s*(ssd|nvme|hdd))?", storage, re.IGNORECASE)
+            if match:
+                specs["storageGb"] = round(cls._unit_to_gb(match.group(1), match.group(2) or "gb"), 4)
+                if match.group(3):
+                    specs["storageType"] = match.group(3).lower()
+
+        gpu_memory = labelled(r"(?:gpu\s+memory|vram)\s*[:=]\s*(?:at\s+least\s+|minimum\s+|>=\s*)?" + number)
+        if gpu_memory:
+            match = re.search(number, gpu_memory, re.IGNORECASE)
+            if match:
+                specs["gpuMemoryGb"] = round(cls._unit_to_gb(match.group(1), match.group(2) or "gb"), 4)
+
+        gpu_count = labelled(r"(?:number\s+of\s+)?gpus?\s*[:=]\s*(?:at\s+least\s+|minimum\s+|>=\s*)?(one|a|\d+)")
+        if gpu_count:
+            value = re.search(r"(one|a|\d+)\s*$", gpu_count, re.IGNORECASE).group(1).lower()
+            specs["gpuCount"] = 1 if value in {"one", "a"} else int(value)
+        elif re.search(r"\b(?:at\s+least\s+)?one\s+dedicated\s+gpu\b", text):
+            specs["gpuCount"] = 1
+
+        ports = labelled(r"(?:network\s+ports?|ports?)\s*[:=]\s*(?:at\s+least\s+|minimum\s+|>=\s*)?(\d+)")
+        if ports:
+            specs["networkPorts"] = int(ports)
+        return specs
 
     def _gemini_resource_extraction(self, request: Dict[str, Any], source: str) -> Dict[str, Any]:
         prompt = f"""Extract IT resource requirements as JSON only.

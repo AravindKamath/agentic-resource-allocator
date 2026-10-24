@@ -58,6 +58,18 @@ function requirementEntries(request) {
   ];
 }
 
+function structuredRequirementEntries(request) {
+  return [
+    ['Reference', reference(request)],
+    ['Status', REQUEST_STATUS_LABELS[request.status] || request.status],
+    ['Category', request.category === 'other' ? 'Other / to be matched by requirements' : titleCase(request.category)],
+    ['Purpose', request.purpose],
+    ['Quantity', request.quantity],
+    ...Object.entries(request.specifications || {}).map(([key, value]) => [titleCase(key), value]),
+    ['Unresolved information', request.pendingClarification?.message || request.automation?.reason]
+  ];
+}
+
 export function requestReceivedTemplate(request) {
   const entries = requirementEntries(request);
   return {
@@ -103,7 +115,7 @@ export function requestRejectedTemplate(request) {
 
 export function manualReviewTemplate(request) {
   const unresolved = request.automation?.reason || request.pendingClarification?.message || 'The request needs administrator review.';
-  const entries = [['Reference', reference(request)], ['Status', REQUEST_STATUS_LABELS[request.status] || request.status], ['Category', titleCase(request.category)], ['Purpose', request.purpose], ['Unresolved information', unresolved]];
+  const entries = structuredRequirementEntries({ ...request, automation: { ...request.automation, reason: unresolved } });
   return {
     subject: 'IT Resource Request – Manual Review Needed',
     ...layout('Manual review needed', 'Your request needs further review before a resource can be assigned.', [{

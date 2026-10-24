@@ -13,7 +13,7 @@ const gmail = {
 };
 
 jest.unstable_mockModule('../services/gmailClient.js', () => gmail);
-const { pollGmailOnce } = await import('../services/emailService.js');
+const { pollGmailOnce, extractPurpose } = await import('../services/emailService.js');
 
 describe('Gmail resource request ingestion', () => {
   beforeEach(async () => {
@@ -32,8 +32,24 @@ describe('Gmail resource request ingestion', () => {
       body: 'I need a workstation for development.',
       receivedAt: new Date()
     });
+
     gmail.markRead.mockResolvedValue({});
     gmail.sendMessage.mockResolvedValue({ id: 'sent-1', threadId: 'thread-1' });
+  });
+
+  test('extracts a concise purpose instead of duplicating technical requirement lines', () => {
+    const purpose = extractPurpose(
+      'I need a workstation for model training.\nRAM: at least 32 GB\nStorage: at least 512 GB SSD\nGPU memory: at least 8 GB VRAM',
+      'Compute request'
+    );
+    expect(purpose).toBe('I need a workstation for model training.');
+    expect(purpose).not.toContain('RAM:');
+    expect(purpose).not.toContain('Storage:');
+  });
+
+  test('does not treat Markdown table rows as the purpose', () => {
+    const purpose = extractPurpose('I need a compute system.\n| RAM | 32 GB |\n| Storage | 512 GB SSD |', 'Compute request');
+    expect(purpose).toBe('I need a compute system.');
   });
 
   test('accepts a registered sender once and deduplicates a repeated poll', async () => {

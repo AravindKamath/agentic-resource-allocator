@@ -79,7 +79,7 @@ describe('results', () => {
     expect(r.body.candidates.eligible).toEqual([]);
     expect(r.body.explanation).toMatch(/No available asset satisfies/);
     expect(r.body.explanation).toMatch(/1 compatible asset\(s\) exist but are currently/);
-    expect(r.body.explanation).toMatch(/1 asset\(s\) in this category fail/);
+    expect(r.body.explanation).toMatch(/1 evaluated asset\(s\) fail/);
   });
 
   test('a request without structured specs gets a warning; review-stage requests get a preview', async () => {

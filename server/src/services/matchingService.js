@@ -103,16 +103,19 @@ export async function getMatches(requestId) {
     warnings,
     candidates: groups,
     summary,
-    explanation: groups.eligible.length ? null : explainNoMatch(summary)
+    explanation: groups.eligible.length ? null : explainNoMatch(summary, request.category, categoryRestricted)
   };
 }
 
-function explainNoMatch(s) {
+function explainNoMatch(s, category, categoryRestricted) {
   const parts = ['No available asset satisfies every stated requirement.'];
   if (s.unavailableCompatible) parts.push(`${s.unavailableCompatible} compatible asset(s) exist but are currently allocated, reserved, under maintenance or unavailable.`);
   if (s.needsVerification) parts.push(`${s.needsVerification} available asset(s) might qualify but are missing specification data; complete their records to verify them.`);
-  if (s.incompatible) parts.push(`${s.incompatible} asset(s) in this category fail at least one requirement.`);
-  if (!s.evaluated) parts.push('There are no assets in this category in the inventory.');
-  if (s.otherCategoryAvailable) parts.push(`${s.otherCategoryAvailable} available asset(s) exist in other categories; matching only considers the request's own category.`);
+  if (s.incompatible) parts.push(`${s.incompatible} evaluated asset(s) fail at least one requirement.`);
+  if (!s.evaluated) {
+    parts.push(categoryRestricted
+      ? `No non-retired assets are recorded in the requested category (${category}).`
+      : 'No non-retired assets are recorded for this request.');
+  }
   return parts.join(' ');
 }

@@ -20,12 +20,26 @@ function normaliseBody(value) {
     .trim();
 }
 
+export function extractPurpose(body, subject = '') {
+  const requirementLabel = /^(cpu|processor|ram|memory|storage|disk|gpu|gpu memory|vram|operating system|os|quantity|needed by|network|software)\b\s*[:=-]/i;
+  const lines = String(body || '')
+    .split(/\n+/)
+    .map(line => line.replace(/^[\s>*\-•|]+/, '').replace(/\|+$/, '').replace(/\s*\|\s*/g, ': ').trim())
+    .filter(Boolean)
+    .filter(line => !requirementLabel.test(line))
+    .filter(line => !/^(\|?\s*:?-{2,}:?\s*\|?)+$/.test(line));
+  const purpose = lines.join(' ').replace(/\s+/g, ' ').trim();
+  if (purpose) return purpose.slice(0, 500);
+  const cleanSubject = String(subject || '').replace(/^(request|need|please)\s*[:\-]\s*/i, '').trim();
+  return cleanSubject ? `Request for ${cleanSubject}`.slice(0, 500) : 'IT resource request';
+}
+
 function requestBody(message) {
   const content = normaliseBody(message.body);
   return {
     title: message.subject || 'Email resource request',
     category: 'other',
-    purpose: content.slice(0, 2000) || 'Resource request submitted by email',
+    purpose: extractPurpose(content, message.subject),
     description: content.slice(0, 5000) || 'No readable message body was provided.',
     specifications: {},
     quantity: 1,
