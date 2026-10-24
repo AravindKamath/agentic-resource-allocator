@@ -53,7 +53,9 @@ export const Login: React.FC = () => {
       <div className="pointer-events-none absolute -bottom-40 -right-20 h-96 w-96 rounded-full bg-[var(--accent)]/10 blur-3xl" />
       <Card className="relative w-full max-w-[420px] shadow-xl shadow-slate-900/5 dark:shadow-black/30">
           <CardHeader className="items-center p-7 pb-4 text-center">
-            <BrandMark />
+            <div className="flex justify-center">
+              <BrandMark />
+            </div>
             <CardTitle className="text-xl">Welcome back</CardTitle>
             <p className="mt-2 text-sm text-[var(--text-muted)]">Sign in to continue to your workspace.</p>
           </CardHeader>
@@ -63,7 +65,7 @@ export const Login: React.FC = () => {
                 {...register('email')}
                 type="email"
                 label="Email"
-                placeholder="you@company.com"
+                placeholder="johndoe@email.com"
                 error={errors.email?.message}
               />
 
