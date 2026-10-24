@@ -1,4 +1,5 @@
 import { REQUEST_STATUS_LABELS } from '../domain/resourceCatalog.js';
+import { config } from '../config.js';
 
 const escapeHtml = (value) => String(value ?? 'Not specified')
   .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -16,15 +17,33 @@ function textRows(entries) {
   return entries.map(([key, value]) => `${key}: ${display(value)}`).join('\n');
 }
 
+function safeLogoUrl() {
+  try {
+    const url = new URL(config.organization.logoUrl);
+    return url.protocol === 'https:' ? url.toString() : '';
+  } catch {
+    return '';
+  }
+}
+
 function layout(title, intro, sections) {
-  const html = `<!doctype html><html><body style="margin:0;background:#f4f6f8;font-family:Arial,sans-serif;color:#243447">
+  const logo = safeLogoUrl();
+  const brand = logo
+    ? `<img src="${escapeHtml(logo)}" alt="${escapeHtml(config.organization.name)}" style="display:block;max-height:44px;max-width:220px;margin-bottom:22px">`
+    : `<div style="font-size:18px;font-weight:700;color:#17324d;margin-bottom:22px">${escapeHtml(config.organization.name)}</div>`;
+  const support = config.organization.supportEmail
+    ? `Need assistance? Contact the IT support team at ${config.organization.supportEmail}.`
+    : 'Need assistance? Contact the IT support team through your usual support channel.';
+  const html = `<!doctype html><html><head><meta charset="UTF-8"></head><body style="margin:0;background:#f4f6f8;font-family:Arial,sans-serif;color:#243447">
     <div style="max-width:640px;margin:24px auto;background:#fff;padding:28px">
+      ${brand}
       <h1 style="font-size:22px;margin:0 0 18px;color:#17324d">${escapeHtml(title)}</h1>
       <p style="line-height:1.5">${escapeHtml(intro)}</p>
       ${sections.map(s => `<h2 style="font-size:16px;margin:24px 0 8px;color:#17324d">${escapeHtml(s.heading)}</h2>${s.html}`).join('')}
-      <p style="margin-top:28px;line-height:1.5">Regards,<br>IT Resource Team</p>
+      <p style="margin-top:28px;line-height:1.5">${escapeHtml(support)}</p>
+      <p style="margin-top:18px;line-height:1.5">Regards,<br>${escapeHtml(config.organization.name)}</p>
     </div></body></html>`;
-  const text = [title, '', intro, '', ...sections.flatMap(s => [s.heading, s.text, '']), 'Regards,', 'IT Resource Team'].join('\n');
+  const text = [config.organization.name, title, '', intro, '', ...sections.flatMap(s => [s.heading, s.text, '']), support, '', 'Regards,', config.organization.name].join('\n');
   return { html, text };
 }
 
@@ -61,7 +80,7 @@ export function assignmentConfirmedTemplate(request, asset) {
     ['Status', REQUEST_STATUS_LABELS[request.status] || request.status]
   ];
   return {
-    subject: 'IT Resource Request – Assignment Confirmed',
+    subject: 'IT Resource Request - Assignment Confirmed',
     ...layout('Assignment confirmed', 'Your IT resource request has been assigned.', [{
       heading: 'Assigned resource', html: `<table style="width:100%;border-collapse:collapse;font-size:14px">${rows(entries)}</table>`, text: textRows(entries)
     }, {

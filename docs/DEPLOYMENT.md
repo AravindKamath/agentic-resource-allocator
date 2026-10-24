@@ -134,6 +134,9 @@ MongoDB deployment as unsupported for assignment operations.
 | `RESOURCE_AUTOMATION_ENABLED` | Render API | no | `true` or `false` | no |
 | `GMAIL_ENABLED` | Render API | yes for email workflow | `true` | no |
 | `ADMIN_EMAIL` | Render API | email workflow | `<admin-email>` | no |
+| `IT_SUPPORT_EMAIL` | Render API | requester email footer | `ADMIN_EMAIL` or no address | no |
+| `ORGANIZATION_NAME` | Render API | branded email header/footer | `IT Resource Team` | no |
+| `ORGANIZATION_LOGO_URL` | Render API | branded email header | empty; text brand is used | no |
 | `GMAIL_CLIENT_ID` | Render API | Gmail | Google OAuth client ID | no |
 | `GMAIL_CLIENT_SECRET` | Render API | Gmail | Google OAuth client secret | yes |
 | `GMAIL_REDIRECT_URI` | Render API | Gmail | `https://<api-host>/api/gmail/oauth/callback` | no |

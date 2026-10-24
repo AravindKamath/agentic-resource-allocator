@@ -120,7 +120,7 @@ export const RequestDetail: React.FC = () => {
           <h1 className="text-2xl font-bold text-gray-900">{request.title}</h1>
           <p className="text-sm text-gray-500">#{shortId(request._id)} · submitted {formatDate(request.createdAt)}</p>
         </div>
-        <RequestStatusBadge status={request.status} />
+        <RequestStatusBadge status={request.status} active={request.allocation.active} quantity={request.quantity} />
       </div>
 
       {request.status === 'CLARIFICATION_REQUIRED' && request.pendingClarification && (

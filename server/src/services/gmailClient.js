@@ -44,6 +44,13 @@ function encoded(value) {
   return Buffer.from(value).toString('base64url');
 }
 
+function encodedSubject(value) {
+  const subject = String(value || '').replace(/[\r\n]+/g, ' ').trim().slice(0, 998);
+  return /[^\x20-\x7e]/.test(subject)
+    ? `=?UTF-8?B?${Buffer.from(subject, 'utf8').toString('base64')}?=`
+    : subject;
+}
+
 function decode(value = '') {
   return Buffer.from(value.replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString('utf8');
 }
@@ -124,7 +131,7 @@ export async function markRead(id) {
 }
 
 export async function sendMessage({ to, subject, body, htmlBody, threadId, inReplyTo }) {
-  const safeSubject = subject.replace(/[\r\n]+/g, ' ').trim().slice(0, 998);
+  const safeSubject = encodedSubject(subject);
   const headers = [
     `To: ${to}`,
     `Subject: ${safeSubject}`,

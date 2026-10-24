@@ -21,6 +21,7 @@ import { RequestQueue } from './pages/admin/RequestQueue';
 import { Inventory } from './pages/admin/Inventory';
 import { AssetEditor } from './pages/admin/AssetEditor';
 import { Assignments } from './pages/admin/Assignments';
+import { History } from './pages/admin/History';
 import { useAuthStore } from './stores/auth';
 
 // Landing page depends on role: administrators manage, everyone else requests.
@@ -89,7 +90,7 @@ function App() {
             <Route path="admin/inventory/new" element={adminOnly(<AssetEditor />)} />
             <Route path="admin/inventory/:id" element={adminOnly(<AssetEditor />)} />
             <Route path="admin/assignments" element={adminOnly(<Assignments />)} />
-            <Route path="admin/history" element={adminOnly(<Assignments />)} />
+            <Route path="admin/history" element={adminOnly(<History />)} />
 
             <Route path="tickets" element={<TicketsList />} />
             <Route 

@@ -66,7 +66,7 @@ export const MyRequests: React.FC = () => {
                         </td>
                         <td className="py-3 px-2 text-gray-600">{categoryLabel(catalog, r.category)}</td>
                         <td className="py-3 px-2 text-gray-600">{r.allocation.active}/{r.quantity}</td>
-                        <td className="py-3 px-2"><RequestStatusBadge status={r.status} /></td>
+                        <td className="py-3 px-2"><RequestStatusBadge status={r.status} active={r.allocation.active} quantity={r.quantity} /></td>
                         <td className="py-3 px-2 text-gray-600">{formatDay(r.createdAt)}</td>
                       </tr>
                     ))}
