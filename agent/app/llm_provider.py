@@ -106,16 +106,22 @@ class LLMProvider:
         # available. Infer a supported category when the request text supports
         # it; retain "other" only when it genuinely cannot be classified.
         if not category or category == "other":
-            if "server" in text:
-                category = "server"
-            elif any(word in text for word in ("gpu", "machine learning", "ml workstation")):
+            if re.search(r"\bworkstations?\b", text, re.IGNORECASE):
+                category = "workstation"
+            elif re.search(r"\b(?:gpu\s*(?:compute\s+)?(?:node|cluster|system|server)|gpu\s+cluster(?:\s+node)?|gpu\s+compute)\b", text, re.IGNORECASE):
                 category = "gpu_system"
-            elif any(word in text for word in ("switch", "router", "network")):
+            elif re.search(r"\bservers?\b", text, re.IGNORECASE):
+                category = "server"
+            elif re.search(r"\b(?:switch(?:es)?|routers?|networking|network\s+switch)\b", text, re.IGNORECASE):
                 category = "networking"
-            elif any(word in text for word in ("storage", "nas", "drive")):
+            elif re.search(r"\b(?:nas|san|storage\s+(?:equipment|system|array|device|drive)|disk\s+array|external\s+drive|backup\s+storage)\b", text, re.IGNORECASE):
                 category = "storage"
-            elif any(word in text for word in ("computer", "laptop", "workstation", "desktop")):
+            elif re.search(r"\b(?:computers?|laptops?|desktops?|notebooks?|pc)\b", text, re.IGNORECASE):
                 category = "standard_computer"
+            elif any(phrase in text for phrase in ("gpu compute", "gpu node", "gpu system", "gpu cluster", "dedicated gpu", "gpu memory", "vram", "gpu")):
+                category = "gpu_system"
+            elif re.search(r"\bstorage\b", text, re.IGNORECASE) and not re.search(r"(?:storage|disk)(?:\s+capacity)?\s*[:=]", text, re.IGNORECASE):
+                category = "storage"
         specs = dict(request.get("specifications") or {})
         specs.update({field: value for field, value in self._extract_labelled_specs(text).items() if field not in specs})
         if "nvme" in text:
