@@ -262,8 +262,8 @@ export const MatchingPanel: React.FC<Props> = ({ catalog, request, onAssigned })
         )}
 
         <p className="text-xs text-gray-500">
-          {result.summary.evaluated} asset(s) in this category evaluated · rules {result.method.version}
-          {result.summary.otherCategoryAvailable > 0 && ` · ${result.summary.otherCategoryAvailable} available asset(s) in other categories not considered`}
+          {result.summary.evaluated} asset(s) evaluated against the stated requirements · rules {result.method.version}
+          {result.summary.otherCategoryAvailable > 0 && ` · ${result.summary.otherCategoryAvailable} available asset(s) in the request category not evaluated`}
         </p>
       </CardContent>
     </Card>

@@ -8,6 +8,7 @@ import { processResourceRequest } from './resourceAutomationService.js';
 import { getRequestDetail } from './resourceRequestService.js';
 import * as gmail from './gmailClient.js';
 import { logger } from '../logger.js';
+import { requestReceivedTemplate, manualReviewTemplate, assignmentConfirmedTemplate, adminManualReviewTemplate } from './emailTemplates.js';
 
 const ADMIN_ESCALATION = 'admin';
 
@@ -19,12 +20,26 @@ function normaliseBody(value) {
     .trim();
 }
 
+export function extractPurpose(body, subject = '') {
+  const requirementLabel = /^(cpu|processor|ram|memory|storage|disk|gpu|gpu memory|vram|operating system|os|quantity|needed by|network|software)\b\s*[:=-]/i;
+  const lines = String(body || '')
+    .split(/\n+/)
+    .map(line => line.replace(/^[\s>*\-•|]+/, '').replace(/\|+$/, '').replace(/\s*\|\s*/g, ': ').trim())
+    .filter(Boolean)
+    .filter(line => !requirementLabel.test(line))
+    .filter(line => !/^(\|?\s*:?-{2,}:?\s*\|?)+$/.test(line));
+  const purpose = lines.join(' ').replace(/\s+/g, ' ').trim();
+  if (purpose) return purpose.slice(0, 500);
+  const cleanSubject = String(subject || '').replace(/^(request|need|please)\s*[:\-]\s*/i, '').trim();
+  return cleanSubject ? `Request for ${cleanSubject}`.slice(0, 500) : 'IT resource request';
+}
+
 function requestBody(message) {
   const content = normaliseBody(message.body);
   return {
     title: message.subject || 'Email resource request',
     category: 'other',
-    purpose: content.slice(0, 2000) || 'Resource request submitted by email',
+    purpose: extractPurpose(content, message.subject),
     description: content.slice(0, 5000) || 'No readable message body was provided.',
     specifications: {},
     quantity: 1,
@@ -33,19 +48,10 @@ function requestBody(message) {
   };
 }
 
-function resultText(request, result) {
-  if (result.status === 'allocated') {
-    const assignment = request.assignments?.find(item => item.status === 'active');
-    return `Your request ${request._id} was allocated automatically.\n\nAsset: ${assignment?.asset?.assetTag || 'assigned asset'}\nStatus: ${request.status}\n\nReply to this thread with request ID ${request._id} if you need help.`;
-  }
-  const reason = request.automation?.reason || 'The request needs administrator review.';
-  return `Your request ${request._id} needs follow-up.\n\nStatus: ${request.status}\nReason: ${reason}\n\nReply to this thread with the missing details, or include request ID ${request._id}.`;
-}
-
-async function enqueue({ request, to, subject, body, kind, threadId, inReplyTo }) {
+async function enqueue({ request, to, subject, body, htmlBody, kind, eventKey, threadId, inReplyTo }) {
   return EmailOutbox.findOneAndUpdate(
-    { request: request._id, kind },
-    { $setOnInsert: { request: request._id, to, subject, body, kind, threadId: threadId || null, inReplyTo: inReplyTo || null } },
+    { request: request._id, eventKey },
+    { $setOnInsert: { request: request._id, eventKey, to, subject, body, htmlBody: htmlBody || null, kind, threadId: threadId || null, inReplyTo: inReplyTo || null } },
     { upsert: true, new: true }
   );
 }
@@ -134,10 +140,16 @@ async function processInbound(message) {
     if (request) {
       const detail = await getRequestDetail(request._id, user);
       await EmailMessage.updateOne({ _id: record._id }, { $set: { request: request._id, status: 'completed', processedAt: new Date() } });
-      await enqueue({ request: detail, to: user.email, subject: `IT request received: ${request._id}`, body: `We received your IT resource request ${request._id} and are processing it.\n\nYou can reply to this thread with additional details.`, kind: 'acknowledgement', threadId: message.threadId, inReplyTo: message.messageId });
-      await enqueue({ request: detail, to: user.email, subject: `IT request ${request._id}: ${detail.status}`, body: resultText(detail, detail.automation?.status === 'allocated' ? { status: 'allocated' } : { status: 'escalated' }), kind: 'result', threadId: message.threadId, inReplyTo: message.messageId });
+      const received = requestReceivedTemplate(detail);
+      await enqueue({ request: detail, to: user.email, subject: received.subject, body: received.text, htmlBody: received.html, kind: 'acknowledgement', eventKey: 'request_received', threadId: message.threadId, inReplyTo: message.messageId });
+      const assignment = detail.assignments?.find(item => item.status === 'active');
+      const resultTemplate = detail.automation?.status === 'allocated' && assignment
+        ? assignmentConfirmedTemplate(detail, assignment.asset)
+        : manualReviewTemplate(detail);
+      await enqueue({ request: detail, to: user.email, subject: resultTemplate.subject, body: resultTemplate.text, htmlBody: resultTemplate.html, kind: detail.automation?.status === 'allocated' ? 'assignment' : 'manual_review', eventKey: detail.automation?.status === 'allocated' ? `assignment:${assignment._id}` : 'manual_review', threadId: message.threadId, inReplyTo: message.messageId });
       if (detail.automation?.status !== 'allocated' && config.gmail.adminEmail) {
-        await enqueue({ request: detail, to: config.gmail.adminEmail, subject: `IT request escalation ${request._id}`, body: `Request ${request._id} from ${user.email} requires review.\n\n${detail.automation?.reason || 'See the admin dashboard.'}`, kind: ADMIN_ESCALATION, threadId: message.threadId });
+        const adminTemplate = adminManualReviewTemplate(detail, process.env.APP_URL);
+        await enqueue({ request: detail, to: config.gmail.adminEmail, subject: adminTemplate.subject, body: adminTemplate.text, htmlBody: adminTemplate.html, kind: ADMIN_ESCALATION, eventKey: 'admin_manual_review', threadId: message.threadId });
       }
     }
     return request;

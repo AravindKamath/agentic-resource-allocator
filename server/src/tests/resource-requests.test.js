@@ -1,5 +1,8 @@
+import { jest } from '@jest/globals';
 import { request } from './setup.js';
 import { auth, tokens, requestBody, createRequest, transition } from './helpers/resources.js';
+import { EmailOutbox } from '../models/EmailOutbox.js';
+import { config } from '../config.js';
 
 let t;
 beforeAll(async () => { t = await tokens(); });
@@ -130,6 +133,23 @@ describe('lifecycle', () => {
 
     expect((await transition(t.admin, req._id, 'UNDER_REVIEW')).status).toBe(409);
     expect((await transition(t.admin, req._id, 'CLOSED', { reason: 'x' })).status).toBe(409);
+  });
+
+  test('manual review state persists when notification queueing fails', async () => {
+    const req = await createRequest(t.user);
+    const previousEnabled = config.gmail.enabled;
+    config.gmail.enabled = true;
+    const queueFailure = jest.spyOn(EmailOutbox, 'findOneAndUpdate').mockRejectedValue(new Error('outbox unavailable'));
+    try {
+      const response = await transition(t.admin, req._id, 'CLARIFICATION_REQUIRED', { message: 'Please confirm the required GPU memory.' });
+      expect(response.status).toBe(200);
+      const persisted = await request.get(`/api/requests/${req._id}`).set(auth(t.user));
+      expect(persisted.body.request.status).toBe('CLARIFICATION_REQUIRED');
+      expect(persisted.body.request.pendingClarification.message).toContain('GPU memory');
+    } finally {
+      queueFailure.mockRestore();
+      config.gmail.enabled = previousEnabled;
+    }
   });
 
   test('clarification keeps existing information; requester response returns it to review', async () => {

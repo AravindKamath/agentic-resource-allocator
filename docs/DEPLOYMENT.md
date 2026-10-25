@@ -134,6 +134,9 @@ MongoDB deployment as unsupported for assignment operations.
 | `RESOURCE_AUTOMATION_ENABLED` | Render API | no | `true` or `false` | no |
 | `GMAIL_ENABLED` | Render API | yes for email workflow | `true` | no |
 | `ADMIN_EMAIL` | Render API | email workflow | `<admin-email>` | no |
+| `IT_SUPPORT_EMAIL` | Render API | requester email footer | `ADMIN_EMAIL` or no address | no |
+| `ORGANIZATION_NAME` | Render API | branded email header/footer | `IT Resource Team` | no |
+| `ORGANIZATION_LOGO_URL` | Render API | branded email header | empty; text brand is used | no |
 | `GMAIL_CLIENT_ID` | Render API | Gmail | Google OAuth client ID | no |
 | `GMAIL_CLIENT_SECRET` | Render API | Gmail | Google OAuth client secret | yes |
 | `GMAIL_REDIRECT_URI` | Render API | Gmail | `https://<api-host>/api/gmail/oauth/callback` | no |
@@ -165,6 +168,13 @@ Local names and defaults are also listed in
 [server/.env.example](../server/.env.example),
 [frontend/.env.example](../frontend/.env.example), and
 [agent/.env.example](../agent/.env.example).
+
+For branded emails, set `ORGANIZATION_LOGO_URL` on the deployed API to the
+public HTTPS URL served by the deployed frontend, for example
+`https://agentic-resource-allocator.vercel.app/logo.svg` after that Vercel
+deployment has been published and verified. The frontend source uses the
+Vite public asset path `/logo.svg`; do not use a GitHub raw URL. If the URL is
+unset or is not HTTPS, emails use the text-only organization header.
 
 ## Gmail OAuth and polling
 

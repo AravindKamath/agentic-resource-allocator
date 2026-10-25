@@ -4,7 +4,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Ca
 import { Input } from '../../components/ui/Input';
 import { RequestStatusBadge } from '../../components/resources/StatusBadge';
 import { EmptyState, ErrorCard, LoadingCard, Pager } from '../../components/resources/PageState';
-import { categoryLabel, formatDay, shortId, urgencyLabel, useCatalog } from '../../components/resources/useCatalog';
+import { categoryLabel, DISPLAY_STATUS_GROUPS, DISPLAY_STATUS_LABELS, formatDay, shortId, urgencyLabel, useCatalog } from '../../components/resources/useCatalog';
+import type { DisplayRequestStatus } from '../../components/resources/useCatalog';
 import { errorMessage, resourceApi } from '../../lib/resourceApi';
 import type { Paged, ResourceRequestSummary } from '../../types';
 
@@ -62,7 +63,7 @@ export const RequestQueue: React.FC = () => {
           <select aria-label="Status" className={selectClass} value={status} onChange={e => update('status', e.target.value)}>
             <option value="">All statuses</option>
             {status.includes(',') && <option value={status}>Selected ({status.split(',').length})</option>}
-            {catalog?.requestStatuses.map(s => <option key={s.key} value={s.key}>{s.label}</option>)}
+            {Object.entries(DISPLAY_STATUS_LABELS).map(([key, label]) => <option key={key} value={DISPLAY_STATUS_GROUPS[key as DisplayRequestStatus].join(',')}>{label}</option>)}
           </select>
           <select aria-label="Category" className={selectClass} value={category} onChange={e => update('category', e.target.value)}>
             <option value="">All categories</option>
@@ -111,7 +112,7 @@ export const RequestQueue: React.FC = () => {
                         <td className="py-3 px-2 text-gray-600">{categoryLabel(catalog, r.category)}</td>
                         <td className="py-3 px-2 text-gray-600">{r.allocation.active}/{r.quantity}</td>
                         <td className="py-3 px-2 text-gray-600">{urgencyLabel(catalog, r.urgency)}</td>
-                        <td className="py-3 px-2"><RequestStatusBadge status={r.status} /></td>
+                        <td className="py-3 px-2"><RequestStatusBadge status={r.status} active={r.allocation.active} quantity={r.quantity} /></td>
                         <td className="py-3 px-2 text-gray-600">{formatDay(r.createdAt)}</td>
                       </tr>
                     ))}

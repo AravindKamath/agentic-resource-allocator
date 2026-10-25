@@ -61,11 +61,13 @@ export async function getMatches(requestId) {
       message: 'All requested assets are already assigned or reserved.' });
   }
 
-  // Same-category assets are evaluated in full; other categories fail the
-  // category requirement by definition and are only counted.
+  const categoryRestricted = request.category && request.category !== 'other';
   const [assets, otherCategoryAvailable] = await Promise.all([
-    Asset.find({ category: request.category, status: { $ne: ASSET_STATUS.RETIRED } }).select(ASSET_FIELDS).lean(),
-    Asset.countDocuments({ category: { $ne: request.category }, status: ASSET_STATUS.AVAILABLE })
+    Asset.find({
+      ...(categoryRestricted ? { category: request.category } : {}),
+      status: { $ne: ASSET_STATUS.RETIRED }
+    }).select(ASSET_FIELDS).lean(),
+    categoryRestricted ? Asset.countDocuments({ category: { $ne: request.category }, status: ASSET_STATUS.AVAILABLE }) : 0
   ]);
 
   const groups = { eligible: [], needsVerification: [], incompatible: [], unavailable: [] };
@@ -101,16 +103,19 @@ export async function getMatches(requestId) {
     warnings,
     candidates: groups,
     summary,
-    explanation: groups.eligible.length ? null : explainNoMatch(summary)
+    explanation: groups.eligible.length ? null : explainNoMatch(summary, request.category, categoryRestricted)
   };
 }
 
-function explainNoMatch(s) {
+function explainNoMatch(s, category, categoryRestricted) {
   const parts = ['No available asset satisfies every stated requirement.'];
   if (s.unavailableCompatible) parts.push(`${s.unavailableCompatible} compatible asset(s) exist but are currently allocated, reserved, under maintenance or unavailable.`);
   if (s.needsVerification) parts.push(`${s.needsVerification} available asset(s) might qualify but are missing specification data; complete their records to verify them.`);
-  if (s.incompatible) parts.push(`${s.incompatible} asset(s) in this category fail at least one requirement.`);
-  if (!s.evaluated) parts.push('There are no assets in this category in the inventory.');
-  if (s.otherCategoryAvailable) parts.push(`${s.otherCategoryAvailable} available asset(s) exist in other categories; matching only considers the request's own category.`);
+  if (s.incompatible) parts.push(`${s.incompatible} evaluated asset(s) fail at least one requirement.`);
+  if (!s.evaluated) {
+    parts.push(categoryRestricted
+      ? `No non-retired assets are recorded in the requested category (${category}).`
+      : 'No non-retired assets are recorded for this request.');
+  }
   return parts.join(' ');
 }

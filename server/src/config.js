@@ -32,6 +32,11 @@ export const config = {
     label: process.env.GMAIL_LABEL || 'INBOX',
     pollIntervalMs: Number(process.env.GMAIL_POLL_INTERVAL_MS || 30000)
   },
+  organization: {
+    name: process.env.ORGANIZATION_NAME?.trim() || 'IT Resource Team',
+    logoUrl: process.env.ORGANIZATION_LOGO_URL?.trim() || '',
+    supportEmail: process.env.IT_SUPPORT_EMAIL?.trim().toLowerCase() || process.env.ADMIN_EMAIL?.trim().toLowerCase() || ''
+  },
   defaults: {
     autoCloseEnabled: process.env.AUTO_CLOSE_ENABLED === 'true',
     confidenceThreshold: Number(process.env.CONFIDENCE_THRESHOLD || 0.78),
