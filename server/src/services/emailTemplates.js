@@ -70,6 +70,18 @@ function structuredRequirementEntries(request) {
   ];
 }
 
+export function requestSubmittedTemplate(request) {
+  const entries = requirementEntries(request);
+  return {
+    subject: 'Resource Request Submitted Successfully',
+    ...layout('Request Submitted', 'Your resource request has been submitted successfully. Our IT team will review your request and notify you when there is an update.', [{
+      heading: 'Request summary', html: `<table style="width:100%;border-collapse:collapse;font-size:14px">${rows(entries)}</table>`, text: textRows(entries)
+    }, {
+      heading: 'Next steps', html: '<p style="line-height:1.5">IT will review the requirements and contact you if more information is needed. We will send another update when the request progresses.</p>', text: 'IT will review the requirements and contact you if more information is needed. We will send another update when the request progresses.'
+    }])
+  };
+}
+
 export function requestReceivedTemplate(request) {
   const entries = requirementEntries(request);
   return {

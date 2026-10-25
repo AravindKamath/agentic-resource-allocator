@@ -141,15 +141,15 @@ async function processInbound(message) {
       const detail = await getRequestDetail(request._id, user);
       await EmailMessage.updateOne({ _id: record._id }, { $set: { request: request._id, status: 'completed', processedAt: new Date() } });
       const received = requestReceivedTemplate(detail);
-      await enqueue({ request: detail, to: user.email, ...received, kind: 'acknowledgement', eventKey: 'request_received', threadId: message.threadId, inReplyTo: message.messageId });
+      await enqueue({ request: detail, to: user.email, subject: received.subject, body: received.text, htmlBody: received.html, kind: 'acknowledgement', eventKey: 'request_received', threadId: message.threadId, inReplyTo: message.messageId });
       const assignment = detail.assignments?.find(item => item.status === 'active');
       const resultTemplate = detail.automation?.status === 'allocated' && assignment
         ? assignmentConfirmedTemplate(detail, assignment.asset)
         : manualReviewTemplate(detail);
-      await enqueue({ request: detail, to: user.email, ...resultTemplate, kind: detail.automation?.status === 'allocated' ? 'assignment' : 'manual_review', eventKey: detail.automation?.status === 'allocated' ? `assignment:${assignment._id}` : 'manual_review', threadId: message.threadId, inReplyTo: message.messageId });
+      await enqueue({ request: detail, to: user.email, subject: resultTemplate.subject, body: resultTemplate.text, htmlBody: resultTemplate.html, kind: detail.automation?.status === 'allocated' ? 'assignment' : 'manual_review', eventKey: detail.automation?.status === 'allocated' ? `assignment:${assignment._id}` : 'manual_review', threadId: message.threadId, inReplyTo: message.messageId });
       if (detail.automation?.status !== 'allocated' && config.gmail.adminEmail) {
         const adminTemplate = adminManualReviewTemplate(detail, process.env.APP_URL);
-        await enqueue({ request: detail, to: config.gmail.adminEmail, ...adminTemplate, kind: ADMIN_ESCALATION, eventKey: 'admin_manual_review', threadId: message.threadId });
+        await enqueue({ request: detail, to: config.gmail.adminEmail, subject: adminTemplate.subject, body: adminTemplate.text, htmlBody: adminTemplate.html, kind: ADMIN_ESCALATION, eventKey: 'admin_manual_review', threadId: message.threadId });
       }
     }
     return request;
