@@ -17,6 +17,7 @@ import { httpError } from '../utils/httpError.js';
 import { emitNotification } from './notificationService.js';
 import { logger } from '../logger.js';
 import { processResourceRequest } from './resourceAutomationService.js';
+import { queueLifecycleEmail } from './emailNotificationService.js';
 
 const S = REQUEST_STATUS;
 
@@ -242,6 +243,15 @@ export async function transitionRequest(id, user, { to, reason, message }) {
 
   logger.info({ requestId: id, from, to, actor: String(user._id) }, 'Request status changed');
   notifyRequester(doc, `Your request "${doc.title}" is now ${to.replace(/_/g, ' ').toLowerCase()}.`, user);
+  if (to === S.REJECTED) {
+    queueLifecycleEmail({ request: doc, kind: 'rejection', eventKey: 'rejection' }).catch(error => {
+      logger.error({ requestId: id, eventKey: 'rejection', error: error.message }, 'Rejection notification scheduling failed');
+    });
+  } else if (to === S.CLARIFICATION_REQUIRED) {
+    queueLifecycleEmail({ request: doc, kind: 'manual_review', eventKey: 'clarification' }).catch(error => {
+      logger.error({ requestId: id, eventKey: 'clarification', error: error.message }, 'Manual-review notification scheduling failed');
+    });
+  }
   return getRequestDetail(id, user);
 }
 

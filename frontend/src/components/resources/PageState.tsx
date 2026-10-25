@@ -5,7 +5,7 @@ import { LoadingSkeleton } from '../ui/LoadingSkeleton';
 import { Button } from '../ui/Button';
 
 export const LoadingCard: React.FC<{ lines?: number }> = ({ lines = 5 }) => (
-  <Card>
+  <Card role="status" aria-label="Loading">
     <CardContent className="p-6">
       <LoadingSkeleton lines={lines} />
     </CardContent>

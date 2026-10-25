@@ -4,7 +4,7 @@ import { ArrowRight } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card';
 import { RequestStatusBadge } from '../../components/resources/StatusBadge';
 import { EmptyState, ErrorCard, LoadingCard } from '../../components/resources/PageState';
-import { categoryLabel, formatDay, requestStatusLabel, useCatalog } from '../../components/resources/useCatalog';
+import { categoryLabel, formatDay, displayStatusLabel, useCatalog } from '../../components/resources/useCatalog';
 import { errorMessage, resourceApi } from '../../lib/resourceApi';
 import type { AdminOverview as Overview } from '../../types';
 
@@ -63,7 +63,7 @@ export const AdminOverview: React.FC = () => {
                       </td>
                       <td className="px-2 py-3 text-gray-600">{request.requester?.name || '—'}</td>
                       <td className="px-2 py-3 text-gray-600">{categoryLabel(catalog, request.category)}</td>
-                      <td className="px-2 py-3" title={requestStatusLabel(catalog, request.status)}><RequestStatusBadge status={request.status} /></td>
+                      <td className="px-2 py-3" title={displayStatusLabel(request.status)}><RequestStatusBadge status={request.status} /></td>
                       <td className="px-2 py-3 text-gray-600">{formatDay(request.createdAt)}</td>
                     </tr>
                   ))}

@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, UserRound } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card';
 import { AssignmentStatusBadge, RequestStatusBadge } from '../../components/resources/StatusBadge';
@@ -104,6 +104,7 @@ export const RequestDetail: React.FC = () => {
   });
 
   const requirements = showOriginal ? request.original : request;
+  const purposeIsDistinct = requirements.purpose?.trim() && requirements.purpose.trim() !== requirements.description?.trim();
   // Admins see ranked matches for any open request: a read-only preview during
   // review, with Assign/Reserve once the server reports the request allocatable.
   const showMatching = isAdmin && !['REJECTED', 'CLOSED', 'ALLOCATED'].includes(request.status);
@@ -119,7 +120,7 @@ export const RequestDetail: React.FC = () => {
           <h1 className="text-2xl font-bold text-gray-900">{request.title}</h1>
           <p className="text-sm text-gray-500">#{shortId(request._id)} · submitted {formatDate(request.createdAt)}</p>
         </div>
-        <RequestStatusBadge status={request.status} />
+        <RequestStatusBadge status={request.status} active={request.allocation.active} quantity={request.quantity} />
       </div>
 
       {request.status === 'CLARIFICATION_REQUIRED' && request.pendingClarification && (
@@ -198,8 +199,15 @@ export const RequestDetail: React.FC = () => {
               </Field>
               <Field label="Urgency">{urgencyLabel(catalog, requirements.urgency)}</Field>
               <Field label="Needed by">{formatDay(requirements.neededBy)}</Field>
-              <div className="sm:col-span-2"><Field label="Purpose">{requirements.purpose}</Field></div>
-              <div className="sm:col-span-2"><Field label="Description">{requirements.description}</Field></div>
+              {purposeIsDistinct && <div className="sm:col-span-2"><Field label="Purpose">{requirements.purpose}</Field></div>}
+              <div className="sm:col-span-2">
+                <details className="group rounded-xl border border-[var(--border)] bg-[var(--surface-muted)]/50 p-3">
+                  <summary className="cursor-pointer list-none text-sm font-semibold text-[var(--text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)] [&::-webkit-details-marker]:hidden">
+                    <span className="flex items-center justify-between">View description <span className="text-xs text-[var(--text-muted)] transition-transform group-open:rotate-180">⌄</span></span>
+                  </summary>
+                  <p className="mt-3 whitespace-pre-wrap border-t border-[var(--border)] pt-3 text-sm text-[var(--text-muted)]">{requirements.description}</p>
+                </details>
+              </div>
               <div className="sm:col-span-2">
                 <dt className="text-xs font-medium uppercase tracking-wide text-gray-500 mb-2">Specifications</dt>
                 <SpecList catalog={catalog} specs={requirements.specifications} />
@@ -211,11 +219,16 @@ export const RequestDetail: React.FC = () => {
         <Card>
           <CardHeader><CardTitle>Requester</CardTitle></CardHeader>
           <CardContent>
-            <dl className="space-y-3">
-              <Field label="Name">{request.requester?.name ?? '—'}</Field>
-              <Field label="Email">{request.requester?.email ?? '—'}</Field>
-              <Field label="Department">{request.department || request.requester?.department || '—'}</Field>
-            </dl>
+            <div className="flex items-center gap-3">
+              <div aria-hidden="true" className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[color-mix(in_srgb,var(--primary)_14%,transparent)] text-sm font-bold text-[var(--primary)]">
+                {(request.requester?.name || request.requester?.email || 'U').slice(0, 1).toUpperCase()}
+              </div>
+              <div className="min-w-0">
+                <p className="flex items-center gap-1.5 truncate text-sm font-bold text-[var(--text)]"><UserRound aria-hidden="true" className="h-3.5 w-3.5 shrink-0 text-[var(--text-muted)]" />{request.requester?.name || 'Unknown requester'}</p>
+                <p className="truncate text-xs text-[var(--text-muted)]">{request.requester?.email || 'No email provided'}</p>
+                {(request.department || request.requester?.department) && <p className="mt-1 truncate text-xs font-medium text-[var(--text-muted)]">{request.department || request.requester?.department}</p>}
+              </div>
+            </div>
           </CardContent>
         </Card>
       </div>

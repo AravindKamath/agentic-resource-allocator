@@ -8,6 +8,7 @@ import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
 import toast from 'react-hot-toast';
+import { BrandMark } from '../components/BrandMark';
 
 const registerSchema = z.object({
   name: z.string().min(1, 'Name is required'),
@@ -55,18 +56,21 @@ export const Register: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8">
-        <div className="text-center">
-          <h1 className="text-3xl font-bold text-gray-900">IT Resource Desk</h1>
-          <p className="mt-2 text-gray-600">Create your account</p>
+    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[var(--page)] px-4 py-12 sm:px-6 lg:px-8">
+      <div className="pointer-events-none absolute -left-32 -top-32 h-80 w-80 rounded-full bg-[var(--primary)]/10 blur-3xl" />
+      <div className="pointer-events-none absolute -bottom-40 -right-20 h-96 w-96 rounded-full bg-[var(--accent)]/10 blur-3xl" />
+      <div className="relative w-full max-w-[420px] space-y-7">
+        <div className="flex flex-col items-center text-center">
+          <BrandMark />
+          <p className="mt-6 text-sm text-[var(--text-muted)]">Create an account for your resource workspace</p>
         </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Sign Up</CardTitle>
+        <Card className="shadow-xl shadow-slate-900/5 dark:shadow-black/30">
+          <CardHeader className="p-7 pb-4">
+            <CardTitle className="text-xl">Create your account</CardTitle>
+            <p className="mt-2 text-sm text-[var(--text-muted)]">Get started with IT Resource Desk.</p>
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-7 pt-3">
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
               <Input
                 {...register('name')}
@@ -122,7 +126,7 @@ export const Register: React.FC = () => {
                 Already have an account?{' '}
                 <Link
                   to="/login"
-                  className="font-medium text-blue-600 hover:text-blue-500"
+                  className="font-semibold text-[var(--primary)] hover:text-[var(--primary-strong)]"
                 >
                   Sign in
                 </Link>

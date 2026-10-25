@@ -26,11 +26,7 @@ export const useConfigStore = create<ConfigState>((set) => ({
   },
 
   updateConfig: async (config: Config) => {
-    try {
-      const response = await api.put('/config', config);
-      set({ config: response.data });
-    } catch (error) {
-      throw error;
-    }
+    const response = await api.put('/config', config);
+    set({ config: response.data });
   },
 }));

@@ -44,6 +44,13 @@ function encoded(value) {
   return Buffer.from(value).toString('base64url');
 }
 
+function encodedSubject(value) {
+  const subject = String(value || '').replace(/[\r\n]+/g, ' ').trim().slice(0, 998);
+  return /[^\x20-\x7e]/.test(subject)
+    ? `=?UTF-8?B?${Buffer.from(subject, 'utf8').toString('base64')}?=`
+    : subject;
+}
+
 function decode(value = '') {
   return Buffer.from(value.replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString('utf8');
 }
@@ -123,15 +130,18 @@ export async function markRead(id) {
   });
 }
 
-export async function sendMessage({ to, subject, body, threadId, inReplyTo }) {
-  const safeSubject = subject.replace(/[\r\n]+/g, ' ').trim().slice(0, 998);
+export async function sendMessage({ to, subject, body, htmlBody, threadId, inReplyTo }) {
+  const safeSubject = encodedSubject(subject);
   const headers = [
     `To: ${to}`,
     `Subject: ${safeSubject}`,
-    'Content-Type: text/plain; charset="UTF-8"',
+    htmlBody ? 'Content-Type: multipart/alternative; boundary="=_resource_boundary"' : 'Content-Type: text/plain; charset="UTF-8"',
     ...(inReplyTo ? [`In-Reply-To: ${inReplyTo}`, `References: ${inReplyTo}`] : [])
   ];
-  const raw = encoded(`${headers.join('\r\n')}\r\n\r\n${body}`);
+  const content = htmlBody
+    ? `--=_resource_boundary\r\nContent-Type: text/plain; charset="UTF-8"\r\n\r\n${body}\r\n--=_resource_boundary\r\nContent-Type: text/html; charset="UTF-8"\r\n\r\n${htmlBody}\r\n--=_resource_boundary--`
+    : body;
+  const raw = encoded(`${headers.join('\r\n')}\r\n\r\n${content}`);
   return gmailRequest('/messages/send', {
     method: 'POST',
     headers: { 'content-type': 'application/json' },

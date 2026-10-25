@@ -6,6 +6,7 @@
 > - Public registration always creates a `user`; promote administrators with `cd server && npm run set-role -- --email <email> --role admin`.
 > - Optional demo inventory: `cd server && npm run seed:inventory` (inserts only missing asset tags).
 > - Asset allocation requires a MongoDB replica set (Atlas qualifies) because it uses transactions.
+> - Deployment settings, environment variables, Gmail polling operations, and smoke tests are documented in [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
 > - `npm test` in `server/` now runs Jest as native ESM against an in-memory replica set (no `.env` needed).
 
 A full-stack AI-powered helpdesk platform that combines a modern React frontend, a secure Node.js API, and a Python FastAPI agent worker for intelligent ticket triage.

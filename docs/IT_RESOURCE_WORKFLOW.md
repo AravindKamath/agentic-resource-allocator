@@ -6,7 +6,7 @@ Status: milestone 1 (core workflow) + phase 2 (deterministic asset matching). Di
 
 Requesters at an institution (students, staff, faculty) ask for IT resources: computers, workstations, servers, GPU systems, networking or storage. IT administrators review the request, ask for clarification if needed, approve or reject it, and assign specific inventory assets. Every status change and allocation is recorded.
 
-The existing support-ticket workflow (tickets, AI triage, knowledge base, agent dashboard) is unchanged and still available under **Support Tickets**. Resource requests are **not** sent to the AI worker. Matching of requests to inventory is deterministic and rule-based (see [Asset matching](#asset-matching)); AI-assisted requirement extraction is planned for a later milestone.
+The existing support-ticket workflow (tickets, AI triage, knowledge base, agent dashboard) is unchanged and still available under **Support Tickets**. Resource requests may be extracted by the resource agent, but allocation matching is deterministic and rule-based (see [Asset matching](#asset-matching)).
 
 ## Roles
 
@@ -110,7 +110,7 @@ The request schema has a single `specifications` object; it does not distinguish
 
 | Request field | Kind | Asset satisfies it when |
 |---|---|---|
-| `category` (always) | exact | `asset.category` equals it. Assets in other categories are not evaluated in detail, only counted. |
+| `category` (when a supported category other than `other` is stated) | exact | `asset.category` equals it. A request classified as `other` (including legacy or missing category data) does not impose a category constraint; all non-retired inventory is evaluated against its stated hardware requirements. |
 | `cpuCores`, `memoryGb`, `storageGb`, `gpuCount`, `gpuMemoryGb`, `networkPorts`, `networkSpeedGbps` | minimum | asset value ≥ requested value |
 | `storageType` | minimum tier | asset tier ≥ requested tier, with HDD < SSD < NVMe |
 | `formFactor` | exact (`any` = unspecified) | asset form factor equals it |
@@ -154,11 +154,11 @@ Request-level warnings are returned rather than guessing:
 
 | Code | Severity | When |
 |---|---|---|
-| `NO_STRUCTURED_REQUIREMENTS` | warning | no specifications at all; only the category is checked |
+| `NO_STRUCTURED_REQUIREMENTS` | warning | no specifications at all; only a supported non-`other` category is checked |
 | `UNSPECIFIED_FIELDS` | info | fields relevant to the category that the requester left blank (not checked) |
 | `UNRECOGNISED_OS` | warning | the requested OS is not a recognised family |
 | `FREE_TEXT_GPU_MODEL` | info | GPU model given as free text; used for ranking only |
-| `CATEGORY_OTHER` | warning | category "Other"; only "Other" assets are considered |
+| `CATEGORY_NOT_RESTRICTIVE` | info | category is "Other" or unspecified; inventory is evaluated by the stated requirements instead of category |
 | `NOT_ALLOCATABLE` | info | request not yet approved (preview) or finished |
 | `NO_REMAINING_QUANTITY` | info | everything requested is already assigned or reserved |
 
@@ -205,8 +205,8 @@ Matching is advisory. The allocation endpoint ignores any client-side ranking or
 - Requests cannot yet express "preferred" values separately from minimums; adding that needs a schema change.
 - Asset records with incomplete specs are reported as `unverified` and cannot be assigned until completed. This is deliberate, but it means inventory data quality directly limits assignment.
 - OS matching uses a fixed list of families (Windows, macOS, and common Linux distributions); anything else needs manual verification.
-- Each call evaluates every non-retired asset in the request's category in memory. That is fine for institution-sized inventories (hundreds to low thousands of assets per category), but would need query-side filtering at larger scale.
-- Matching only considers the request's own category; there is no cross-category substitution.
+- Each call evaluates every non-retired asset in the request's category in memory, or all non-retired inventory when the request category is `other`. That is fine for institution-sized inventories (hundreds to low thousands of assets), but would need query-side filtering at larger scale.
+- `other` is not a cross-category bypass: every stated hardware requirement remains a hard constraint, and missing asset data remains unverified rather than compatible.
 - The catalog's `gpuCount` minimum is 1, so an asset cannot be recorded as having *no* GPU. For a GPU requirement, a GPU-less asset therefore shows as `unverified` rather than `incompatible`. It is still never assignable. The rules would treat `gpuCount: 0` as a failure if the catalog allowed it.
 
 ## API

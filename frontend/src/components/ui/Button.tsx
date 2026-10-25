@@ -9,14 +9,14 @@ interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
 
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
   ({ className, variant = 'primary', size = 'md', isLoading, children, disabled, ...props }, ref) => {
-    const baseClasses = 'inline-flex items-center justify-center rounded-lg font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 transition-colors';
+    const baseClasses = 'inline-flex items-center justify-center rounded-lg font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)] focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 transition-all active:scale-[.98]';
     
     const variants = {
-      primary: 'bg-indigo-600 text-white hover:bg-indigo-700 focus-visible:ring-indigo-500',
-      secondary: 'bg-teal-600 text-white hover:bg-teal-700 focus-visible:ring-teal-500',
-      outline: 'border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 focus-visible:ring-gray-500',
-      ghost: 'text-gray-700 hover:bg-gray-100 focus-visible:ring-gray-500',
-      danger: 'bg-red-600 text-white hover:bg-red-700 focus-visible:ring-red-500',
+      primary: 'bg-indigo-600 text-white shadow-sm hover:bg-[var(--primary-strong)] hover:shadow-md',
+      secondary: 'bg-teal-600 text-white shadow-sm hover:brightness-95 hover:shadow-md',
+      outline: 'border border-gray-300 bg-[var(--surface)] text-[var(--text)] hover:bg-[var(--surface-muted)]',
+      ghost: 'text-[var(--text-muted)] hover:bg-[var(--surface-muted)] hover:text-[var(--text)]',
+      danger: 'bg-red-600 text-white shadow-sm hover:brightness-90',
     };
 
     const sizes = {

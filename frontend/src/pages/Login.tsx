@@ -8,6 +8,7 @@ import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
 import toast from 'react-hot-toast';
+import { isAxiosError } from 'axios';
 
 const loginSchema = z.object({
   email: z.string().email('Please enter a valid email'),
@@ -37,30 +38,33 @@ export const Login: React.FC = () => {
       await login(data.email, data.password);
       toast.success('Welcome back!');
       navigate('/');
-    } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Login failed');
+    } catch (error: unknown) {
+      const message = isAxiosError(error) && typeof error.response?.data?.message === 'string'
+        ? error.response.data.message
+        : 'Login failed';
+      toast.error(message);
     }
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8">
-        <div className="text-center">
-          <h1 className="text-3xl font-bold text-gray-900">IT Resource Desk</h1>
-          <p className="mt-2 text-gray-600">Sign in to your account</p>
-        </div>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Sign In</CardTitle>
+    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[var(--page)] px-4 py-12 sm:px-6 lg:px-8">
+      <div className="pointer-events-none absolute -left-32 -top-32 h-80 w-80 rounded-full bg-[var(--primary)]/10 blur-3xl" />
+      <div className="pointer-events-none absolute -bottom-40 -right-20 h-96 w-96 rounded-full bg-[var(--accent)]/10 blur-3xl" />
+      <Card className="relative w-full max-w-[420px] shadow-xl shadow-slate-900/5 dark:shadow-black/30">
+          <CardHeader className="items-center p-7 pb-4 text-center">
+            <div className="mb-3 flex justify-center">
+              <img src="/logo.svg" alt="Organization logo" className="h-9 w-9" />
+            </div>
+            <CardTitle className="text-xl">Welcome back</CardTitle>
+            <p className="mt-2 text-sm text-[var(--text-muted)]">Sign in to continue to your workspace.</p>
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-7 pt-3">
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
               <Input
                 {...register('email')}
                 type="email"
                 label="Email"
-                placeholder="Enter your email"
+                placeholder="johndoe@email.com"
                 error={errors.email?.message}
               />
 
@@ -84,17 +88,13 @@ export const Login: React.FC = () => {
             <div className="mt-6 text-center">
               <span className="text-sm text-gray-600">
                 Don't have an account?{' '}
-                <Link
-                  to="/register"
-                  className="font-medium text-blue-600 hover:text-blue-500"
-                >
+                <Link to="/register" className="font-semibold text-[var(--primary)] hover:text-[var(--primary-strong)]">
                   Sign up
                 </Link>
               </span>
             </div>
           </CardContent>
-        </Card>
-      </div>
+      </Card>
     </div>
   );
 };

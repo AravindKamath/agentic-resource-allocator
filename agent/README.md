@@ -2,6 +2,10 @@
 
 A Python FastAPI microservice that provides AI-powered ticket triage and response generation for the Smart Helpdesk system.
 
+The deployment runtime is pinned to Python 3.12 in
+[`.python-version`](.python-version). This keeps the pinned native
+dependencies on Render-compatible prebuilt Linux wheels.
+
 ## Features
 
 - **Ticket Classification**: Automatically categorizes tickets into billing, tech, shipping, or other
@@ -53,6 +57,20 @@ docker build -t helpdesk-agent .
 # Run the container
 docker run -p 9000:9000 -e STUB_MODE=true helpdesk-agent
 ```
+
+### Render Deployment
+
+For a managed Render Web Service, set the root directory to `agent`, use
+Python 3.12 (the checked-in `.python-version` is used), and configure:
+
+```text
+Build Command: pip install -r requirements.txt
+Start Command: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+Health Check Path: /healthz
+```
+
+Keep `STUB_MODE=true` for the free-tier demo unless a provider API key is
+configured in Render's secret environment variables.
 
 ## API Endpoints
 

@@ -1,7 +1,7 @@
 import React from 'react';
 import { Badge } from '../ui/Badge';
 import type { AssetStatus, AssignmentStatus, RequestStatus } from '../../types';
-import { requestStatusLabel, useCatalog } from './useCatalog';
+import { displayStatusLabel } from './useCatalog';
 
 type Variant = 'default' | 'success' | 'warning' | 'danger' | 'secondary';
 
@@ -20,7 +20,7 @@ const REQUEST_VARIANTS: Record<RequestStatus, Variant> = {
 const ASSET_VARIANTS: Record<AssetStatus, Variant> = {
   available: 'success',
   reserved: 'warning',
-  allocated: 'secondary',
+  allocated: 'success',
   maintenance: 'warning',
   unavailable: 'danger',
   retired: 'default',
@@ -33,9 +33,11 @@ const ASSIGNMENT_VARIANTS: Record<AssignmentStatus, Variant> = {
   released: 'default',
 };
 
-export const RequestStatusBadge: React.FC<{ status: RequestStatus }> = ({ status }) => {
-  const { catalog } = useCatalog();
-  return <Badge variant={REQUEST_VARIANTS[status] ?? 'default'}>{requestStatusLabel(catalog, status)}</Badge>;
+export const RequestStatusBadge: React.FC<{ status: RequestStatus; active?: number; quantity?: number }> = ({ status, active, quantity }) => {
+  const progress = status === 'PARTIALLY_ALLOCATED' && active !== undefined && quantity !== undefined
+    ? ` · ${active} of ${quantity}`
+    : '';
+  return <Badge variant={REQUEST_VARIANTS[status] ?? 'default'}>{displayStatusLabel(status)}{progress}</Badge>;
 };
 
 export const AssetStatusBadge: React.FC<{ status: AssetStatus }> = ({ status }) => (

@@ -105,17 +105,17 @@ export const AssetEditor: React.FC = () => {
 
   return (
     <div className="space-y-6 max-w-4xl">
-      <Link to="/admin/inventory" className="inline-flex items-center text-sm text-gray-600 hover:text-gray-900">
+      <Link to="/admin/inventory" className="inline-flex items-center text-sm text-[var(--text-muted)] hover:text-[var(--text)]">
         <ArrowLeft className="mr-1 h-4 w-4" /> Back to inventory
       </Link>
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-900">{isNew ? 'Add asset' : `${asset!.assetTag} · ${asset!.name}`}</h1>
+        <h1 className="text-2xl font-bold text-[var(--text)]">{isNew ? 'Add asset' : `${asset!.assetTag} · ${asset!.name}`}</h1>
         {asset && <AssetStatusBadge status={asset.status} />}
       </div>
 
       {asset?.currentAssignment && (
-        <Card className="border-blue-200 bg-blue-50">
-          <CardContent className="p-4 text-sm text-blue-900">
+        <Card className="border-emerald-300 bg-emerald-50 dark:border-emerald-700 dark:bg-emerald-950/40">
+          <CardContent className="p-4 text-sm text-emerald-950 dark:text-emerald-100">
             {asset.currentAssignment.status === 'proposed' ? 'Reserved (pending approval) for ' : 'Currently assigned to '}
             <Link to={`/admin/requests/${asset.currentAssignment.request._id}`} className="font-medium underline">
               {asset.currentAssignment.request.title}
